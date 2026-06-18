@@ -41,15 +41,26 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
             <Metric label="Under monitor" value={count("monitor")} trend="Review field reports" tone="warning" />
             <Metric label="Critical" value={count("critical")} trend="Immediate attention" tone="critical" />
           </div>
-          <Card title="AI Anomaly Alerts" subtitle="Select an alert to drill into affected tree records">
-            <div className="alert-stack">
-              {ALERTS.map((alert) => (
-                <button key={alert.title} className={`alert-card alert-${alert.tone}`} onClick={() => setSelectedAlert(alert)}>
-                  <span className="alert-dot" /><span><strong>{alert.title}</strong><small>{alert.detail}</small><b>Confidence: {alert.confidence}%</b></span>
-                </button>
-              ))}
-            </div>
-          </Card>
+          <div className="two-column">
+            <Card title="AI Anomaly Alerts" subtitle="Select an alert to drill into affected tree records">
+              <div className="alert-stack">
+                {ALERTS.map((alert) => (
+                  <button key={alert.title} className={`alert-card alert-${alert.tone}`} onClick={() => setSelectedAlert(alert)}>
+                    <span className="alert-dot" /><span><strong>{alert.title}</strong><small>{alert.detail}</small><b>Confidence: {alert.confidence}%</b></span>
+                  </button>
+                ))}
+              </div>
+            </Card>
+            <Card title="Zone Health Score" subtitle="Current week average health %">
+              <div className="bar-chart">
+                {ZONES.map((item) => {
+                  const zoneTrees = trees.filter((tree) => tree.zone === item);
+                  const average = Math.round(zoneTrees.reduce((sum, tree) => sum + tree.health, 0) / zoneTrees.length);
+                  return <div key={item}><span style={{ height: `${average}%` }} /><strong>{average}%</strong><small>{item}</small></div>;
+                })}
+              </div>
+            </Card>
+          </div>
         </>
       )}
     </>
