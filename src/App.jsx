@@ -175,6 +175,55 @@ export default function App() {
     showToast(`${id} archived. Its previous QR label is now invalid in the UI mock.`);
   };
 
+  const recordQrScan = ({ rawId, qrCode, tree, scanResult }) => {
+    const resolvedQr = qrCode || getQrForInput(rawId, qrCodes);
+    const roleDetected = ROLE_LABEL[user.role];
+    const routedTo = scanResult === "success"
+      ? user.role === ROLE.RANGER ? "SS2-M2-D Field Report" : "SS3-M3-A Tree ID Card"
+      : "Blocked";
+    const event = {
+      scanId: nextSequence("QSE", qrScanEvents, "scanId", 105),
+      qrId: resolvedQr?.qrId || String(rawId || "UNKNOWN"),
+      treeId: resolvedQr?.treeId || tree?.id || String(rawId || "UNKNOWN"),
+      actorId: user.id,
+      roleDetected,
+      routedTo,
+      scanResult,
+      scannedAt: nowLabel(),
+    };
+    setQrScanEvents((current) => [event, ...current]);
+    appendAudit({
+      type: scanResult === "success" ? "qr_scan" : "security",
+      event: `${event.qrId} scan ${scanResult} for ${event.treeId}; routed to ${routedTo}`,
+      severity: scanResult === "success" ? "low" : "high",
+    });
+    return event;
+  };
+
+  const confirmSpatialPlan = ({ point, species, targetZone, score, tone, reasoning }) => {
+    const record = {
+      planId: nextSequence("SPR", spatialPlanningRecords, "planId", 204),
+      createdBy: user.id,
+      species,
+      targetZone,
+      proposedX: point.x,
+      proposedY: point.y,
+      suitabilityScore: score,
+      suitabilityLabel: tone,
+      aiReasoning: reasoning,
+      decision: "confirmed",
+      createdAt: nowLabel(),
+    };
+    setSpatialPlanningRecords((current) => [record, ...current]);
+    appendAudit({ type: "edit", event: `${record.planId} confirmed for ${species} in ${targetZone}`, severity: tone === "Low" ? "medium" : "low" });
+    showToast(`${record.planId} confirmed and written to SpatialPlanningRecords.`);
+  };
+
+  const changeLanguage = (next) => {
+    saveLanguage(next);
+    setLanguage(next);
+  };
+
   return (
     <main className="ss4-app">
       <header className="ss4-header">
