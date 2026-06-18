@@ -7,6 +7,7 @@ import { visitorText } from "../../services/visitorI18n.js";
 const GROWTH_YEARS = [5, 10, 25, 50];
 
 export default function TreeIdCardModal({ tree, language, onClose, onCollect }) {
+  const [mode, setMode] = useState("explorer");
   const t = (path, values) => visitorText(language, path, values);
   const profile = getPublicTreeCard(tree, language);
   
@@ -47,6 +48,41 @@ export default function TreeIdCardModal({ tree, language, onClose, onCollect }) 
           <article><span>{t("profiles.height")}</span><strong>{profile.height} m</strong></article>
           <article><span>{t("profiles.age")}</span><strong>{profile.age} {t("profiles.years")}</strong></article>
         </div>
+
+        <div className="segmented segmented-premium">
+          <button className={mode === "explorer" ? "active" : ""} onClick={() => setMode("explorer")}>{t("profiles.explorer")}</button>
+          <button className={mode === "expert" ? "active" : ""} onClick={() => setMode("expert")}>{t("profiles.expert")}</button>
+        </div>
+
+        {mode === "explorer" ? (
+          <div className="profile-story-grid">
+            <article>
+              <span>{t("profiles.whereToSee")}</span>
+              <p>{profile.zoneContext}</p>
+            </article>
+            <article>
+              <span>{t("profiles.lookFor")}</span>
+              <p>{profile.seasonalInterest}</p>
+            </article>
+            <article>
+              <span>{t("profiles.gardenStory")}</span>
+              <p>{profile.culturalUse}</p>
+            </article>
+            <article>
+              <span>{t("profiles.funFact")}</span>
+              <p>{profile.visitorFact}</p>
+            </article>
+          </div>
+        ) : (
+          <div className="expert-data premium-expert">
+            <p><strong>{t("profiles.taxonomy")}:</strong> Plantae · Angiosperms · {profile.family}</p>
+            <p><strong>{t("profiles.origin")}:</strong> {profile.origin}</p>
+            <p><strong>{t("profiles.morphology")}:</strong> {profile.morphology}</p>
+            <p><strong>{t("profiles.ecologyRole")}:</strong> {profile.ecologyRole}</p>
+            <p><strong>{t("profiles.conservation")}:</strong> {profile.conservationNote}</p>
+          </div>
+        )}
+
         <button className="button button-block" onClick={() => onCollect?.(tree)}>{t("profiles.collect")}</button>
         <p className="public-data-note">{t("profiles.demoNotice")}</p>
       </div>
