@@ -32,7 +32,7 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
       <Card
         className="visitor-map-card visitor-map-card-primary"
         title={t("explore.mapTitle")}
-        subtitle={t("explore.mapZoneHint")}
+        subtitle={route.length ? t("explore.mapReady", { count: route.length, duration }) : t("explore.mapZoneHint")}
         actions={<button className="button button-small" onClick={onOpenScanner}>{t("explore.scanQr")}</button>}
       >
         <div className="visitor-map-toolbelt">
@@ -53,6 +53,13 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
           onZoneClick={setSelectedZone}
           language={language}
         />
+        {route.length > 0 && (
+          <div className="route-map-overlay-card">
+            <span>{t("explore.routeReady")}</span>
+            <strong>{route.length} {t("explore.stops")} · {routePlan.totalDistance} · {duration} {t("explore.minutes")}</strong>
+            <button className="text-button" onClick={() => setRoutePlan(null)}>{t("explore.clearRoute")}</button>
+          </div>
+        )}
       </Card>
 
       {zone && (
@@ -101,6 +108,13 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
           <button className="button button-outline" onClick={() => { setRoutePlan(null); setError(""); }}>{t("explore.exploreFreely")}</button>
         </div>
       </section>
+
+      {route.length > 0 && <Card className="route-card-premium" title={t("explore.routeTitle")} subtitle={t("explore.routeSubtitle")}>
+        <div className="route-list">{route.map((tree, index) => {
+          const profile = getPublicTreeCard(tree, language);
+          return <button className="route-step" key={tree.id} onClick={() => onTreeClick(tree)}><b>{index + 1}</b><span><strong>{profile.name}</strong><small>{tree.id} · {tree.zone} · {Math.round(duration / route.length)} {t("explore.minutes")}</small></span></button>;
+        })}</div>
+      </Card>}
     </VisitorPageShell>
   );
 }
