@@ -150,6 +150,31 @@ export default function App() {
     return null;
   };
 
+  const updateTask = (id, status) => setTasks((current) => current.map((task) => task.id === id ? { ...task, status } : task));
+  const addTask = (taskDraft) => {
+    const task = { ...taskDraft, id: taskDraft.id || nextTaskId(tasks), status: taskDraft.status || "pending" };
+    setTasks((current) => [...current, task]);
+    return task;
+  };
+  const updateTree = (id, patch) => {
+    setTrees((current) => updateTreeRecord(current, id, patch));
+    appendAudit({ type: "edit", event: `Tree ${id} record updated by Admin`, severity: patch.status === "critical" ? "high" : "low" });
+  };
+  const addTree = ({ name, scientificName }) => {
+    const id = `TBJ-${String(trees.length + 1).padStart(3, "0")}`;
+    setTrees((current) => [...current, { id, name, scientificName, zone: "Arboretum", age: 1, height: 1, health: 100, status: "healthy", rare: false, x: 42, y: 51, description: "New tree record created in the modular UI prototype." }]);
+    const qrId = `QR-${id}`;
+    setQrCodes((current) => [...current, { qrId, treeId: id, qrEndpoint: `/scan/${qrId}`, qrStatus: "active", generatedAt: nowLabel(), generatedBy: user.id, exportedAt: "", invalidatedAt: "", replacedBy: "" }]);
+    appendAudit({ type: "edit", event: `${qrId} generated for new tree ${id}`, severity: "low" });
+    showToast(`${id} created with a mock QR label.`);
+  };
+  const archiveTree = (id) => {
+    setTrees((current) => current.filter((tree) => tree.id !== id));
+    setQrCodes((current) => current.map((qr) => qr.treeId === id && qr.qrStatus === "active" ? { ...qr, qrStatus: "invalidated", invalidatedAt: nowLabel() } : qr));
+    appendAudit({ type: "security", event: `Tree ${id} archived; active QR labels invalidated`, severity: "medium" });
+    showToast(`${id} archived. Its previous QR label is now invalid in the UI mock.`);
+  };
+
   return (
     <main className="ss4-app">
       <header className="ss4-header">
