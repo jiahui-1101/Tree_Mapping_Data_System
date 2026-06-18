@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
+import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
+import TreeQrLabel from "../../components/qr/TreeQrLabel.jsx";
 import { ZONES } from "../../data/trees.js";
 import { filterTrees } from "../../services/mockTreeService.js";
 
-export default function InventoryPage({ trees }) {
+export default function InventoryPage({ trees, qrCodes = [], showToast }) {
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
   const [status, setStatus] = useState("all");
+  const [selected, setSelected] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const visibleTrees = useMemo(() => filterTrees({ trees, query, zone, status }), [trees, query, zone, status]);
 
@@ -23,9 +26,16 @@ export default function InventoryPage({ trees }) {
       </div>
       <Card>
         <div className="table-wrap"><table><thead><tr><th>Tree ID</th><th>Species</th><th>Scientific name</th><th>Zone</th><th>Age</th><th>Health</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>{visibleTrees.map((tree) => <tr key={tree.id}><td>{tree.id}</td><td>{tree.name}</td><td><em>{tree.scientificName}</em></td><td>{tree.zone}</td><td>{tree.age} yrs</td><td>{tree.health}%</td><td><StatusPill status={tree.status} /></td><td><button className="table-action">View QR</button></td></tr>)}</tbody>
+          <tbody>{visibleTrees.map((tree) => <tr key={tree.id}><td>{tree.id}</td><td>{tree.name}</td><td><em>{tree.scientificName}</em></td><td>{tree.zone}</td><td>{tree.age} yrs</td><td>{tree.health}%</td><td><StatusPill status={tree.status} /></td><td><button className="table-action" onClick={() => setSelected(tree)}>View QR</button></td></tr>)}</tbody>
         </table></div>
       </Card>
+      {selected && <Modal title={`${selected.name} - ${selected.id}`} onClose={() => setSelected(null)}>
+        <TreeQrLabel tree={selected} qrCode={qrCodes.find((qr) => qr.treeId === selected.id && qr.qrStatus === "active") || qrCodes.find((qr) => qr.treeId === selected.id)} />
+        <p>{selected.description}</p>
+        <div className="modal-footer-grid">
+          <button className="button" onClick={() => showToast(`QR label preview exported for ${selected.id}.`)}>Export QR Label</button>
+        </div>
+      </Modal>}
     </>
   );
 }
