@@ -30,9 +30,9 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
           <select value={zone} onChange={(event) => setZone(event.target.value)}>
             <option value="all">All zones</option>{ZONES.map((item) => <option key={item}>{item}</option>)}
           </select>
+          <button className="button button-small" onClick={() => showToast("Dashboard summary export prepared as a demo CSV.")}>Export Summary</button>
         </div>
       </div>
-
       {activeTab === "overview" && (
         <>
           <div className="metric-grid">
@@ -61,6 +61,24 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
               </div>
             </Card>
           </div>
+          <Card title="Recent Field Reports" subtitle="Latest ranger submissions synced to Admin" actions={<button className="button button-small" onClick={() => onNavigate("tasks")}>View all</button>}>
+            <div className="admin-report-preview">
+              {fieldReports.slice(0, 4).map((report) => (
+                <article key={report.id}>
+                  <span><b>{report.id}</b><StatusPill status={report.syncStatus} /></span>
+                  <h3>{report.treeName}</h3>
+                  <p>{report.treeId} · {report.ranger} · {report.timestamp}</p>
+                  <div className="report-chip-row"><StatusPill status={report.reportMode} /><StatusPill status={report.observedStatus} /></div>
+                  {report.reportMode === "ai" ? (
+                    <small>AI photo uploaded: {report.photoName}. Primary diagnosis: {report.diagnosis} ({report.confidence}% confidence).</small>
+                  ) : (
+                    <small>Manual assessment: {report.manualCause} Recommended action: {report.manualTreatment}</small>
+                  )}
+                </article>
+              ))}
+              {fieldReports.length === 0 && <div className="it-empty-state"><h3>No field reports yet</h3><p>Ranger submissions will appear here after QR field reports are synced.</p></div>}
+            </div>
+          </Card>
         </>
       )}
     </>
