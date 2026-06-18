@@ -12,7 +12,6 @@ export default function CollectionPage({ trees, collection, onOpenScanner, langu
   const collectedTrees = trees.filter((tree) => collection.includes(tree.id));
   const t = (path, values) => visitorText(language, path, values);
   const zonesDiscovered = new Set(collectedTrees.map((tree) => tree.zone)).size;
-
   return (
     <VisitorPageShell className="collection-passport-page">
       <VisitorSectionHeader
@@ -28,13 +27,33 @@ export default function CollectionPage({ trees, collection, onOpenScanner, langu
         <VisitorMetricCard value={t(collectedTrees.some((tree) => tree.rare) ? "collection.rare" : "collection.common")} label={t("collection.rarest")} detail={t("collection.safeNote")} />
       </div>
       <Card className="passport-card" actions={<button className="button button-small" onClick={onOpenScanner}>{t("collection.scanMore")}</button>}>
-        <VisitorEmptyState
-          mascot={<GardenMascot />}
-          title={t("collection.emptyTitle")}
-          subtitle={t("collection.empty")}
-          action={<button className="button" onClick={onOpenScanner}>{t("collection.scanMore")}</button>}
-        />
+        {collectedTrees.length === 0 ? (
+          <VisitorEmptyState
+            mascot={<GardenMascot />}
+            title={t("collection.emptyTitle")}
+            subtitle={t("collection.empty")}
+            action={<button className="button" onClick={onOpenScanner}>{t("collection.scanMore")}</button>}
+          />
+        ) : (
+          <div className="passport-grid">{collectedTrees.map((tree) => {
+            const profile = getPublicTreeCard(tree, language);
+            return (
+              <VisitorPhotoCard
+                key={tree.id}
+                className="passport-stamp"
+                onClick={() => setSelected(tree)}
+                photo={<><span className="passport-icon">✓</span><TreePhoto src={profile.photoUrl} alt={profile.photoAlt} className="passport-stamp-photo" /></>}
+                eyebrow={`${tree.id} · ${tree.zone}`}
+                title={profile.name}
+                subtitle={tree.scientificName}
+                meta={profile.badges.slice(0, 2).join(" · ")}
+                badges={[t("collection.openCard")]}
+              />
+            );
+          })}</div>
+        )}
       </Card>
+      {selected && <TreeIdCardModal tree={selected} language={language} onClose={() => setSelected(null)} onCollect={() => setSelected(null)} />}
     </VisitorPageShell>
   );
 }
