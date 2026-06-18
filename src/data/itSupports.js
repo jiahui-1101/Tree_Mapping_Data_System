@@ -93,3 +93,61 @@ export const SYSTEM_SERVICES = [
       lastLogin: "Yesterday 18:22",
     },
   ];
+
+  export const SUPPORT_TICKETS = [
+    {
+      id: "INC-1042",
+      title: "QR scanner timeout",
+      category: "QR",
+      priority: "high",
+      status: "open",
+      owner: "Unassigned",
+      source: "QR Service",
+      detail: "Field scanner reported API timeout before retry recovery.",
+    },
+    {
+      id: "INC-1043",
+      title: "Failed login spike",
+      category: "Security",
+      priority: "urgent",
+      status: "investigating",
+      owner: "Nur Izzati",
+      source: "Auth Service",
+      detail: "Three failed PIN attempts triggered temporary ranger account lock.",
+    },
+    {
+      id: "INC-1044",
+      title: "Map layer slow",
+      category: "Map",
+      priority: "normal",
+      status: "open",
+      owner: "Unassigned",
+      source: "Map Layer",
+      detail: "Protected map layer loaded slower on one desktop session.",
+    },
+    {
+      id: "INC-1045",
+      title: "AI diagnosis delay",
+      category: "AI",
+      priority: "normal",
+      status: "resolved",
+      owner: "Nur Izzati",
+      source: "AI Service",
+      detail: "Maintenance recommendation worker delayed one dashboard alert.",
+    },
+  ];
+  
+  export const SERVICE_LOGS = [
+    { serviceId: "qr-service", time: "Today 09:18", level: "warning", source: "QR Service", message: "Scan API latency exceeded 400 ms during field retry window." },
+    { serviceId: "qr-service", time: "Today 09:15", level: "info", source: "QR Service", message: "Retry queue recovered two delayed scan submissions." },
+    { serviceId: "qr-service", time: "Today 08:57", level: "error", source: "Tree QR scan endpoint", message: "Temporary timeout detected before automatic recovery." },
+    { serviceId: "ai-service", time: "Today 09:17", level: "info", source: "AI Service", message: "Predictive maintenance worker completed scheduled health summary." },
+    { serviceId: "ai-service", time: "Today 08:47", level: "warning", source: "Diagnosis recommendation worker", message: "Disease-rate alert generated for Zon Tanaman." },
+    { serviceId: "map-layer", time: "Today 09:16", level: "info", source: "Map Layer", message: "Protected species overlay rendered for authorized role." },
+    { serviceId: "map-layer", time: "Today 08:51", level: "warning", source: "3D garden overlay renderer", message: "Desktop layer load took longer than the demo target." },
+    { serviceId: "auth-service", time: "Today 09:15", level: "info", source: "Auth Service", message: "Role-based access policy refreshed for all demo accounts." },
+    { serviceId: "auth-service", time: "Yesterday 18:22", level: "error", source: "Role-based access control", message: "Ranger account locked after three failed PIN attempts." },
+    { serviceId: "database-sync", time: "Today 09:14", level: "warning", source: "Database Sync", message: "Audit export queue running in frontend mock mode." },
+    { serviceId: "database-sync", time: "Today 08:40", level: "info", source: "Inventory and audit persistence mock", message: "Tree inventory mock sync completed for dashboard records." },
+  ];
+  
