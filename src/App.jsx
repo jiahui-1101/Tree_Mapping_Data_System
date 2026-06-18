@@ -83,6 +83,40 @@ export default function App() {
   const [toast, setToast] = useState("");
   const showToast = useCallback((message) => setToast(message), []);
 
+  const appendAudit = useCallback((entry) => {
+    setAuditLogs((current) => [{
+      time: nowLabel(),
+      type: entry.type || "edit",
+      actor: entry.actor || user?.name || "System",
+      role: entry.role || ROLE_LABEL[user?.role] || "System",
+      event: entry.event,
+      severity: entry.severity || "low",
+    }, ...current]);
+  }, [user]);
+
+  if (!user) {
+    return <LoginPage onLogin={(nextUser) => {
+      setUser(nextUser);
+      setActivePage(DEFAULT_PAGE[nextUser.role]);
+      setAuditLogs((current) => [{
+        time: nowLabel(),
+        type: "login",
+        actor: nextUser.name,
+        role: ROLE_LABEL[nextUser.role],
+        event: `Signed in as ${ROLE_LABEL[nextUser.role]}`,
+        severity: "low",
+      }, ...current]);
+    }} />;
+  }
+
+  const navigate = (page) => {
+    if (canAccessPage(user.role, page)) setActivePage(page);
+    else {
+      appendAudit({ type: "security", event: `Access denied for ${page}`, severity: "high" });
+      showToast("Access denied for this role.");
+    }
+  };
+
   return (
     <main className="ss4-app">
       <header className="ss4-header">
