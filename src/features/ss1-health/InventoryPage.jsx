@@ -6,12 +6,14 @@ import TreeQrLabel from "../../components/qr/TreeQrLabel.jsx";
 import { ZONES } from "../../data/trees.js";
 import { filterTrees } from "../../services/mockTreeService.js";
 
-export default function InventoryPage({ trees, qrCodes = [], showToast }) {
+export default function InventoryPage({ trees, qrCodes = [], onArchiveTree, onUpdateTree, showToast }) {
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
   const [status, setStatus] = useState("all");
   const [selected, setSelected] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
+  const [editDraft, setEditDraft] = useState(null);
   const visibleTrees = useMemo(() => filterTrees({ trees, query, zone, status }), [trees, query, zone, status]);
 
   return (
@@ -34,7 +36,18 @@ export default function InventoryPage({ trees, qrCodes = [], showToast }) {
         <p>{selected.description}</p>
         <div className="modal-footer-grid">
           <button className="button" onClick={() => showToast(`QR label preview exported for ${selected.id}.`)}>Export QR Label</button>
+          <button className="button button-outline" onClick={() => { setEditDraft(selected); setEditOpen(true); }}>Edit Record</button>
+          <button className="button button-danger" onClick={() => { onArchiveTree(selected.id); setSelected(null); }}>Archive</button>
         </div>
+      </Modal>}
+      {editOpen && editDraft && <Modal title={`Edit Tree Record - ${editDraft.id}`} onClose={() => setEditOpen(false)}>
+        <label className="field-label">Common name</label><input value={editDraft.name} onChange={(event) => setEditDraft({ ...editDraft, name: event.target.value })} />
+        <label className="field-label">Scientific name</label><input value={editDraft.scientificName} onChange={(event) => setEditDraft({ ...editDraft, scientificName: event.target.value })} />
+        <label className="field-label">Zone</label><select value={editDraft.zone} onChange={(event) => setEditDraft({ ...editDraft, zone: event.target.value })}>{ZONES.map((item) => <option key={item}>{item}</option>)}</select>
+        <label className="field-label">Health %</label><input type="number" min="0" max="100" value={editDraft.health} onChange={(event) => setEditDraft({ ...editDraft, health: Number(event.target.value) })} />
+        <label className="field-label">Status</label><select value={editDraft.status} onChange={(event) => setEditDraft({ ...editDraft, status: event.target.value })}><option value="healthy">Healthy</option><option value="monitor">Monitor</option><option value="critical">Critical</option></select>
+        <label className="field-label">Description</label><textarea value={editDraft.description} onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })} />
+        <button className="button button-block" disabled={!editDraft.name || !editDraft.scientificName} onClick={() => { onUpdateTree(editDraft.id, editDraft); setSelected(editDraft); setEditOpen(false); showToast("Tree record updated in admin prototype."); }}>Save Tree Record</button>
       </Modal>}
     </>
   );
