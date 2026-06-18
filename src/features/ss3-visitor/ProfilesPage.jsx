@@ -31,6 +31,7 @@ export default function ProfilesPage({ trees, language, onCollect }) {
           />
         );
       })}</div>
+      {selected && <TreeIdCardModal tree={selected} language={language} onClose={() => setSelected(null)} onCollect={(tree) => { onCollect(tree); setSelected(null); }} />}
     </VisitorPageShell>
   );
 }
