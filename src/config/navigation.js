@@ -67,3 +67,10 @@ export const NAVIGATION = {
     },
   ],
 };
+
+export const DEFAULT_PAGE = {
+  [ROLE.ADMIN]: "dashboard",
+  [ROLE.RANGER]: "ranger-tasks",
+  [ROLE.VISITOR]: "explore",
+  [ROLE.IT_SUPPORT]: "it-dashboard",
+};
