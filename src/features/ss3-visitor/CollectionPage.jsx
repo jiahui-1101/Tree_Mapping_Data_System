@@ -21,6 +21,12 @@ export default function CollectionPage({ trees, collection, onOpenScanner, langu
         title={t("collection.title")}
         subtitle={t("collection.subtitle")}
       />
+      <div className="metric-grid collection-metrics">
+        <VisitorMetricCard value={collection.length} label={t("collection.badges")} detail={t("collection.saved")} />
+        <VisitorMetricCard value={zonesDiscovered} label={t("collection.zones")} detail={t("collection.keepExploring")} />
+        <VisitorMetricCard value={Math.max(1, collection.length)} label={t("collection.streak")} detail={t("collection.saved")} />
+        <VisitorMetricCard value={t(collectedTrees.some((tree) => tree.rare) ? "collection.rare" : "collection.common")} label={t("collection.rarest")} detail={t("collection.safeNote")} />
+      </div>
       <Card className="passport-card" actions={<button className="button button-small" onClick={onOpenScanner}>{t("collection.scanMore")}</button>}>
         <VisitorEmptyState
           mascot={<GardenMascot />}
