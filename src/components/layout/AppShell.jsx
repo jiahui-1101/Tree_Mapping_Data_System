@@ -1,5 +1,7 @@
 import { useState } from "react";
 import Sidebar, { Brand } from "./Sidebar.jsx";
+import Topbar from "./Topbar.jsx";
+import MobileNav from "./MobileNav.jsx";
 
 export default function AppShell({ role, user, activePage, language, onNavigate, onLogout, children }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -20,8 +22,10 @@ export default function AppShell({ role, user, activePage, language, onNavigate,
         </div>
       )}
       <main className="main-content">
+        <Topbar page={activePage} user={user} role={role} language={language} onOpenMenu={() => setDrawerOpen(true)} />
         {children}
       </main>
+      <MobileNav role={role} activePage={activePage} language={language} onNavigate={navigate} />
     </div>
   );
 }
