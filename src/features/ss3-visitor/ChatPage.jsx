@@ -36,7 +36,14 @@ function mockBotReply(language, question) {
 
 export default function ChatPage({ language }) {
   const t = (path) => visitorText(language, path);
-
+  const [input, setInput] = useState("");
+  const [messages, setMessages] = useState([{ from: "bot", text: t("chat.hello") }]);
+  useEffect(() => setMessages([{ from: "bot", text: t("chat.hello") }]), [language]);
+  const send = (value = input) => {
+    if (!value.trim()) return;
+    setMessages((current) => [...current, { from: "user", text: value }, { from: "bot", text: mockBotReply(language, value) }]);
+    setInput("");
+  };
   return (
     <VisitorPageShell className="chat-premium">
       <VisitorHeroCard
@@ -46,6 +53,15 @@ export default function ChatPage({ language }) {
         title={t("chat.title")}
         subtitle={t("chat.subtitle")}
       />
+      <section className="chat-card-premium chat-window-premium">
+        <header className="assistant-header">
+          <div><strong>{t("chat.assistantName")}</strong><small><span />{t("chat.status")}</small></div>
+          <GardenMascot compact />
+        </header>
+        <div className="chat-window">{messages.map((message, index) => <p className={`chat-bubble chat-${message.from}`} key={index}>{message.text}</p>)}</div>
+        <div className="suggestion-row">{t("chat.suggestions").map((question) => <button key={question} onClick={() => send(question)}>{question}</button>)}</div>
+        <div className="input-row chat-input-row"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder={t("chat.placeholder")} /><button className="button" onClick={() => send()}>{t("chat.send")}</button></div>
+      </section>
     </VisitorPageShell>
   );
 }
