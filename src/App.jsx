@@ -37,21 +37,51 @@ import { createFieldReport } from "./services/rangerService.js";
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
 import { visitorText } from "./services/visitorI18n.js";
 
-const PAGES = [
-  { id: "map", label: "Garden Map" },
-  { id: "audit", label: "Audit Log" },
-  { id: "spatial", label: "Spatial Planning" },
-];
+const ROLE_LABEL = {
+  [ROLE.ADMIN]: "Admin",
+  [ROLE.RANGER]: "Ranger",
+  [ROLE.VISITOR]: "Visitor",
+  [ROLE.IT_SUPPORT]: "IT Support",
+};
+
+function nowLabel() {
+  return "Just now";
+}
+
+function nextSequence(prefix, records, key, start = 1) {
+  const max = records.reduce((current, record) => {
+    const value = Number(String(record[key] || "").match(/(\d+)$/)?.[1] || 0);
+    return Math.max(current, value);
+  }, start - 1);
+  return `${prefix}-${String(max + 1).padStart(3, "0")}`;
+}
+
+function getQrForInput(rawValue, qrCodes = []) {
+  const normalized = String(rawValue || "").trim().toLowerCase();
+  return qrCodes.find((qr) => (
+    qr.qrId.toLowerCase() === normalized ||
+    qr.qrEndpoint.toLowerCase() === normalized ||
+    qr.treeId.toLowerCase() === normalized
+  )) || null;
+}
 
 export default function App() {
-  const [page, setPage] = useState("map");
+  const [user, setUser] = useState(null);
+  const [activePage, setActivePage] = useState("dashboard");
+  const [trees, setTrees] = useState(TREES);
+  const [tasks, setTasks] = useState(INITIAL_TASKS);
+  const [fieldReports, setFieldReports] = useState(INITIAL_FIELD_REPORTS);
+  const [qrCodes, setQrCodes] = useState(QRCODES);
+  const [qrScanEvents, setQrScanEvents] = useState(QR_SCAN_EVENTS);
+  const [spatialPlanningRecords, setSpatialPlanningRecords] = useState(SPATIAL_PLANNING_RECORDS);
+  const [visitorHeatmapAggregates] = useState(VISITOR_HEATMAP_AGGREGATES);
+  const [auditLogs, setAuditLogs] = useState(AUDIT_LOGS);
+  const [collection, setCollection] = useState(loadCollection);
+  const [language, setLanguage] = useState(loadLanguage);
+  const [scannerOpen, setScannerOpen] = useState(false);
+  const [scannedTree, setScannedTree] = useState(null);
   const [toast, setToast] = useState("");
-  const [spatialRecords, setSpatialRecords] = useState(SPATIAL_PLANNING_RECORDS);
-
-  const showToast = (message) => {
-    setToast(message);
-    window.setTimeout(() => setToast(""), 2400);
-  };
+  const showToast = useCallback((message) => setToast(message), []);
 
   return (
     <main className="ss4-app">
@@ -60,56 +90,7 @@ export default function App() {
           <span className="eyebrow">Subsystem 4</span>
           <h1>Mapping Operations</h1>
         </div>
-        <nav className="ss4-tabs" aria-label="Subsystem 4 pages">
-          {PAGES.map((item) => (
-            <button
-              key={item.id}
-              className={page === item.id ? "active" : ""}
-              onClick={() => setPage(item.id)}
-            >
-              {item.label}
-            </button>
-          ))}
-        </nav>
       </header>
-
-      <section className="ss4-content">
-        {page === "map" && (
-          <MapPage
-            role={ROLE.ADMIN}
-            trees={TREES}
-            qrCodes={QRCODES}
-            qrScanEvents={QR_SCAN_EVENTS}
-            visitorHeatmapAggregates={VISITOR_HEATMAP_AGGREGATES}
-            onOpenScanner={() => showToast("QR scanner integration will be connected by its owning module.")}
-          />
-        )}
-        {page === "audit" && <AuditPage qrScanEvents={QR_SCAN_EVENTS} showToast={showToast} />}
-        {page === "spatial" && (
-          <SpatialPage
-            trees={TREES}
-            spatialPlanningRecords={spatialRecords}
-            showToast={showToast}
-            onConfirmSpatialPlan={(plan) => {
-              setSpatialRecords((records) => [
-                {
-                  planId: `SPR-${Date.now()}`,
-                  species: plan.species,
-                  targetZone: plan.targetZone,
-                  proposedX: plan.point.x,
-                  proposedY: plan.point.y,
-                  suitabilityScore: plan.score,
-                  suitabilityLabel: plan.tone,
-                  decision: "confirmed",
-                },
-                ...records,
-              ]);
-              showToast("Spatial plan confirmed.");
-            }}
-          />
-        )}
-      </section>
-
       {toast && <div className="ss4-toast">{toast}</div>}
     </main>
   );
