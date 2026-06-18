@@ -41,6 +41,15 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
             <Metric label="Under monitor" value={count("monitor")} trend="Review field reports" tone="warning" />
             <Metric label="Critical" value={count("critical")} trend="Immediate attention" tone="critical" />
           </div>
+          <Card title="AI Anomaly Alerts" subtitle="Select an alert to drill into affected tree records">
+            <div className="alert-stack">
+              {ALERTS.map((alert) => (
+                <button key={alert.title} className={`alert-card alert-${alert.tone}`} onClick={() => setSelectedAlert(alert)}>
+                  <span className="alert-dot" /><span><strong>{alert.title}</strong><small>{alert.detail}</small><b>Confidence: {alert.confidence}%</b></span>
+                </button>
+              ))}
+            </div>
+          </Card>
         </>
       )}
     </>
