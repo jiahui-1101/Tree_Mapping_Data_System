@@ -22,9 +22,11 @@ function GrowthVisual({ profile, projection, confidence, t }) {
 
 export default function TreeIdCardModal({ tree, language, onClose, onCollect }) {
   const [mode, setMode] = useState("explorer");
+  const [growth, setGrowth] = useState(10);
   const t = (path, values) => visitorText(language, path, values);
   const profile = getPublicTreeCard(tree, language);
-  
+  const projection = projectGrowth(profile, growth);
+  const confidence = Math.max(80, Math.round(96 - projection.years * 0.28));
   return (
     <Modal title={t("profiles.treeIdCard", { name: profile.name })} onClose={onClose} wide>
       <div className="tree-id-premium">
@@ -96,6 +98,42 @@ export default function TreeIdCardModal({ tree, language, onClose, onCollect }) 
             <p><strong>{t("profiles.conservation")}:</strong> {profile.conservationNote}</p>
           </div>
         )}
+
+        <section className="growth-simulator-premium">
+          <div className="growth-copy">
+            <span className="premium-eyebrow">{t("profiles.aiSimulator")}</span>
+            <h3>{t("profiles.futureCanopy")} · {growth}{t("profiles.yearSuffix")}</h3>
+            <p>{t("profiles.simulatorNote")}</p>
+          </div>
+          <div className="growth-stage-layout">
+            <GrowthVisual profile={profile} projection={projection} confidence={confidence} t={t} />
+            <div className="growth-stage-panel">
+              <div className="growth-panel-header">
+                <span className="field-label">{t("profiles.simulation", { years: growth })}</span>
+                <b>{t("profiles.ecologyForecast")}</b>
+              </div>
+              <input
+                className="growth-slider"
+                aria-label={t("profiles.aiSimulator")}
+                type="range"
+                min="0"
+                max={GROWTH_YEARS.length - 1}
+                value={GROWTH_YEARS.indexOf(growth)}
+                onChange={(event) => setGrowth(GROWTH_YEARS[Number(event.target.value)])}
+              />
+              <div className="growth-year-row growth-year-ticks">
+                {GROWTH_YEARS.map((year) => <button key={year} className={growth === year ? "active" : ""} onClick={() => setGrowth(year)}>{year}{t("profiles.yearSuffix")}</button>)}
+              </div>
+              <div className="simulator-output simulator-output-grid">
+                <span style={{ "--metric-level": `${Math.min(100, projection.height * 2.1)}%` }}>{t("profiles.projectedShort")}<strong>{projection.height} m</strong></span>
+                <span style={{ "--metric-level": `${Math.min(100, projection.canopy * 2.8)}%` }}>{t("profiles.canopyWidth")}<strong>{projection.canopy} m</strong></span>
+                <span style={{ "--metric-level": `${Math.min(100, projection.root * 4)}%` }}>{t("profiles.rootRadius")}<strong>{projection.root} m</strong></span>
+                <span style={{ "--metric-level": `${confidence}%` }}>{t("profiles.modelConfidence")}<strong>{confidence}%</strong></span>
+              </div>
+              <p className="growth-milestone">{projection.milestone}</p>
+            </div>
+          </div>
+        </section>
 
         <button className="button button-block" onClick={() => onCollect?.(tree)}>{t("profiles.collect")}</button>
         <p className="public-data-note">{t("profiles.demoNotice")}</p>
