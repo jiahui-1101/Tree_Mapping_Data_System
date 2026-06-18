@@ -110,6 +110,35 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
           </div>
         </>
       )}
+      {activeTab === "ai-insights" && (
+        <div className="two-column">
+          <Card title="AI Anomaly Insights" subtitle="Current AI risk signals from the dashboard">
+            <div className="alert-stack">
+              {ALERTS.map((alert) => (
+                <button key={alert.title} className={`alert-card alert-${alert.tone}`} onClick={() => setSelectedAlert(alert)}>
+                  <span className="alert-dot" /><span><strong>{alert.title}</strong><small>{alert.detail}</small><b>Confidence: {alert.confidence}%</b></span>
+                </button>
+              ))}
+            </div>
+          </Card>
+          <Card title="Predictive Maintenance Queue" subtitle="Pending AI alerts ready for dispatch">
+            <div className="alert-stack">
+              {MAINTENANCE_ALERTS.map((alert) => (
+                <article className={`alert-card alert-${alert.confidence >= 90 ? "critical" : "warning"}`} key={alert.id}>
+                  <span className="alert-dot" /><span><strong>{alert.title}</strong><small>{alert.treeId} · {alert.zone} · {alert.window}</small><b>Confidence: {alert.confidence}%</b></span>
+                </article>
+              ))}
+            </div>
+            <div className="button-row schedule-approve"><button className="button" onClick={() => onNavigate("maintenance")}>Open Maintenance</button><button className="button button-outline" onClick={() => onNavigate("tasks")}>Open Task Tracker</button></div>
+          </Card>
+        </div>
+      )}
+      {selectedAlert && <Modal title={selectedAlert.title} onClose={() => setSelectedAlert(null)}>
+        <p>{selectedAlert.detail}</p>
+        <h3>Affected tree records</h3>
+        {trees.filter((tree) => tree.zone === selectedAlert.zone && tree.status !== "healthy").map((tree) => <div className="list-row" key={tree.id}><span><strong>{tree.id}</strong><small>{tree.name}</small></span><StatusPill status={tree.status} /></div>)}
+        <button className="button button-block" onClick={() => { setSelectedAlert(null); onNavigate("tasks"); }}>Review linked tasks</button>
+      </Modal>}
     </>
   );
 }
