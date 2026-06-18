@@ -9,8 +9,14 @@ import { VISITOR_INTEREST_IDS, visitorText } from "../../services/visitorI18n.js
 import { VisitorLanguageSwitch, VisitorPageShell, VisitorSectionHeader } from "../../components/common/VisitorUI.jsx";
 
 export default function ExplorePage({ trees, language, onLanguage, onTreeClick, onOpenScanner }) {
+  const [selected, setSelected] = useState([]);
   const [selectedZone, setSelectedZone] = useState(null);
   const t = (path, values) => visitorText(language, path, values);
+
+  const zone = selectedZone ? getVisitorZone(selectedZone.id, language) : null;
+  const zoneTrees = zone?.representativeTrees
+    .map((id) => trees.find((tree) => tree.id === id))
+    .filter(Boolean) || [];
 
   return (
     <VisitorPageShell className="visitor-explore">
@@ -39,6 +45,37 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
           language={language}
         />
       </Card>
+
+      {zone && (
+        <section className="zone-detail-drawer">
+          <button className="text-button zone-close" onClick={() => setSelectedZone(null)}>{t("explore.closeZone")}</button>
+          <span className="premium-eyebrow">{t("explore.zoneSelected")}</span>
+          <h3>{zone.localizedName}</h3>
+          <p>{zone.summary}</p>
+          <div className="zone-drawer-grid">
+            <article>
+              <span>{t("explore.representativeTrees")}</span>
+              {zoneTrees.map((tree) => {
+                const profile = getPublicTreeCard(tree, language);
+                return <button key={tree.id} onClick={() => onTreeClick(tree)}>{profile.name}<small>{tree.scientificName}</small></button>;
+              })}
+            </article>
+            <article>
+              <span>{t("explore.facilities")}</span>
+              <p>{zone.facilities.join(" · ")}</p>
+            </article>
+          </div>
+          <button
+            className="button"
+            onClick={() => {
+              setSelected(zone.routeTags);
+              document.querySelector(".route-builder-card")?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }}
+          >
+            {t("explore.startRouteHere")}
+          </button>
+        </section>
+      )}
     </VisitorPageShell>
   );
 }
