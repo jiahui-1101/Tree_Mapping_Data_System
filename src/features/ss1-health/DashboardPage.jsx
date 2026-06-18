@@ -17,6 +17,14 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
   const [selectedAlert, setSelectedAlert] = useState(null);
   const visibleTrees = useMemo(() => zone === "all" ? trees : trees.filter((tree) => tree.zone === zone), [trees, zone]);
   const count = (status) => visibleTrees.filter((tree) => tree.status === status).length;
+  const aiReports = fieldReports.filter((report) => report.reportMode === "ai").length;
+  const manualReports = fieldReports.filter((report) => report.reportMode === "manual").length;
+  const syncedReports = fieldReports.filter((report) => report.syncStatus === "synced").length;
+  const criticalZones = ZONES.map((item) => ({
+    zone: item,
+    critical: trees.filter((tree) => tree.zone === item && tree.status === "critical").length,
+    monitor: trees.filter((tree) => tree.zone === item && tree.status === "monitor").length,
+  })).sort((a, b) => (b.critical + b.monitor) - (a.critical + a.monitor));
 
   return (
     <>
@@ -79,6 +87,27 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
               {fieldReports.length === 0 && <div className="it-empty-state"><h3>No field reports yet</h3><p>Ranger submissions will appear here after QR field reports are synced.</p></div>}
             </div>
           </Card>
+        </>
+      )}
+      {activeTab === "analytics" && (
+        <>
+          <div className="metric-grid">
+            <Metric label="Reports synced" value={syncedReports} trend="Ranger field report records" />
+            <Metric label="AI reports" value={aiReports} trend="Photo-based diagnosis used" tone="warning" />
+            <Metric label="Manual reports" value={manualReports} trend="Ranger knew the issue" tone="healthy" />
+            <Metric label="At-risk zones" value={criticalZones.filter((item) => item.critical || item.monitor).length} trend="Critical or monitor trees" tone="critical" />
+          </div>
+          <div className="two-column">
+            <Card title="Zone Risk Comparison" subtitle="Critical and monitor tree counts by zone">
+              <div className="zone-record-list">{criticalZones.map((item) => <p key={item.zone}><span>{item.zone}</span><b>{item.critical} critical · {item.monitor} monitor</b></p>)}</div>
+            </Card>
+            <Card title="Report Mode Breakdown" subtitle="How ranger reports are being submitted">
+              <div className="admin-report-preview">
+                <article><span><b>Manual assessments</b><StatusPill status="manual" /></span><h3>{manualReports}</h3><small>Manual mode is used when ranger can identify the issue without AI.</small></article>
+                <article><span><b>AI photo diagnosis</b><StatusPill status="ai" /></span><h3>{aiReports}</h3><small>AI mode requires a field photo and syncs the attachment to Admin.</small></article>
+              </div>
+            </Card>
+          </div>
         </>
       )}
     </>
