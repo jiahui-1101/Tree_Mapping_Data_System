@@ -224,15 +224,36 @@ export default function App() {
     setLanguage(next);
   };
 
+  const pageProps = { role: user.role, user, trees, tasks, fieldReports, qrCodes, qrScanEvents, spatialPlanningRecords, visitorHeatmapAggregates, auditLogs, language, showToast };
+  let content;
+  switch (activePage) {
+    case "dashboard": content = <DashboardPage {...pageProps} onNavigate={navigate} />; break;
+    case "inventory": content = <InventoryPage {...pageProps} onAddTree={addTree} onArchiveTree={archiveTree} onUpdateTree={updateTree} />; break;
+    case "maintenance": content = <MaintenancePage {...pageProps} onAddTask={addTask} />; break;
+    case "schedule": content = <SchedulePage {...pageProps} onAddTask={addTask} />; break;
+    case "rangers": content = <RangerManagementPage {...pageProps} />; break;
+    case "tasks": content = <TaskTrackerPage {...pageProps} onUpdateTask={updateTask} />; break;
+    case "ranger-tasks": content = <RangerTasksPage {...pageProps} onUpdateTask={updateTask} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "ranger-reports": content = <RangerReportsPage {...pageProps} />; break;
+    case "qr": content = <QRPage role={user.role} language={language} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "map": content = <MapPage {...pageProps} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "spatial": content = <SpatialPage {...pageProps} onConfirmSpatialPlan={confirmSpatialPlan} />; break;
+    case "audit": content = <AuditPage {...pageProps} />; break;
+    case "explore": content = <ExplorePage {...pageProps} onLanguage={changeLanguage} onTreeClick={setScannedTree} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "profiles": content = <ProfilesPage {...pageProps} onCollect={collect} />; break;
+    case "chat": content = <ChatPage language={language} />; break;
+    case "collection": content = <CollectionPage {...pageProps} collection={collection} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "it-dashboard": content = <ITDashboardPage {...pageProps} onNavigate={navigate} />; break;
+    case "it-monitoring": content = <SystemMonitoringPage {...pageProps} />; break;
+    case "it-users": content = <UserAccessPage {...pageProps} />; break;
+    case "it-tickets": content = <IncidentTicketsPage {...pageProps} />; break;
+    default: content = <DashboardPage {...pageProps} onNavigate={navigate} />;
+  }
+
   return (
-    <main className="ss4-app">
-      <header className="ss4-header">
-        <div>
-          <span className="eyebrow">Subsystem 4</span>
-          <h1>Mapping Operations</h1>
-        </div>
-      </header>
-      {toast && <div className="ss4-toast">{toast}</div>}
-    </main>
+    <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={() => setUser(null)}>
+      {content}
+      <Toast message={toast} onClose={() => setToast("")} />
+    </AppShell>
   );
 }
