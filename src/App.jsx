@@ -253,6 +253,9 @@ export default function App() {
   return (
     <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={() => setUser(null)}>
       {content}
+      {scannerOpen && <QRScanner role={user.role} trees={trees} qrCodes={qrCodes} language={language} onClose={() => setScannerOpen(false)} onComplete={completeScan} onScanEvent={recordQrScan} />}
+      {scannedTree && user.role === ROLE.VISITOR && <TreeIdCardModal tree={scannedTree} language={language} onClose={() => setScannedTree(null)} onCollect={(tree) => { collect(tree); setScannedTree(null); }} />}
+      {user.role === ROLE.VISITOR && activePage !== "chat" && <ChatFloatingButton language={language} onClick={() => navigate("chat")} />}
       <Toast message={toast} onClose={() => setToast("")} />
     </AppShell>
   );
