@@ -117,6 +117,39 @@ export default function App() {
     }
   };
 
+  const collect = (tree) => {
+    const result = addCollectedTreeWithStatus(tree.id);
+    setCollection(result.collection);
+    showToast(visitorText(language, result.isNew ? "collection.unlocked" : "collection.alreadyCollected", { name: tree.name }));
+  };
+
+  const completeScan = (tree, message, reportDraft) => {
+    if (user.role === ROLE.VISITOR) {
+      collect(tree);
+      setScannedTree(tree);
+      return null;
+    }
+    if (user.role === ROLE.RANGER && reportDraft) {
+      const report = createFieldReport({ draft: reportDraft, tree, rangerName: user.name, tasks, existingReports: fieldReports });
+      setFieldReports((current) => [report, ...current]);
+      if (report.taskId) setTasks((current) => current.map((task) => task.id === report.taskId ? { ...task, status: "completed" } : task));
+      setTrees((current) => current.map((item) => item.id === report.treeId ? {
+        ...item,
+        status: report.observedStatus,
+        health: report.observedStatus === "critical" ? 38 : report.observedStatus === "monitor" ? 68 : 94,
+      } : item));
+      appendAudit({
+        type: "edit",
+        event: `${report.id} submitted for ${report.treeId}; Trees.health_status updated to ${report.observedStatus}`,
+        severity: report.observedStatus === "critical" ? "high" : "medium",
+      });
+      showToast(`${report.id} submitted. Report synced to admin dashboard.`);
+      return report;
+    }
+    showToast(message);
+    return null;
+  };
+
   return (
     <main className="ss4-app">
       <header className="ss4-header">
