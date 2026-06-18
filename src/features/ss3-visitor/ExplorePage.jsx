@@ -10,9 +10,18 @@ import { VisitorLanguageSwitch, VisitorPageShell, VisitorSectionHeader } from ".
 
 export default function ExplorePage({ trees, language, onLanguage, onTreeClick, onOpenScanner }) {
   const [selected, setSelected] = useState([]);
+  const [routePlan, setRoutePlan] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
+  const [error, setError] = useState("");
+  const [duration, setDuration] = useState(60);
   const t = (path, values) => visitorText(language, path, values);
-
+  const toggle = (id) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
+  const generate = () => {
+    const result = buildVisitorRoute(selected, trees);
+    if (!result.ok) return setError(t("explore.validation"));
+    setRoutePlan({ ...result, estimatedDuration: duration }); setError("");
+  };
+  const route = routePlan?.route || [];
   const zone = selectedZone ? getVisitorZone(selectedZone.id, language) : null;
   const zoneTrees = zone?.representativeTrees
     .map((id) => trees.find((tree) => tree.id === id))
@@ -37,8 +46,8 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
         <GardenMap
           role={ROLE.VISITOR}
           trees={trees}
-          route={[]}
-          routePath={[]}
+          route={route}
+          routePath={routePlan?.waypoints || []}
           selectedZoneId={selectedZone?.id}
           onTreeClick={onTreeClick}
           onZoneClick={setSelectedZone}
@@ -76,6 +85,22 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
           </button>
         </section>
       )}
+
+      <section className="route-builder-card">
+        <VisitorSectionHeader
+          className="route-builder-copy"
+          eyebrow={t("explore.routeBuilder")}
+          title={t("explore.planTitle")}
+          subtitle={t("explore.planSubtitle")}
+        />
+        <div className="interest-grid premium-interest-grid">{VISITOR_INTEREST_IDS.map((id) => <button key={id} className={selected.includes(id) ? "selected" : ""} onClick={() => toggle(id)}><strong>{t(`interests.${id}`)[0]}</strong><small>{t(`interests.${id}`)[1]}</small></button>)}</div>
+        <div className="duration-row premium-duration-row"><strong>{t("explore.duration")}</strong>{[45, 60, 90, 120].map((value) => <button className={duration === value ? "active" : ""} key={value} onClick={() => setDuration(value)}>{value} {t("explore.minutes")}</button>)}</div>
+        {error && <p className="form-error visitor-error">{error}</p>}
+        <div className="button-row">
+          <button className="button" onClick={generate}>{t("explore.generate")} →</button>
+          <button className="button button-outline" onClick={() => { setRoutePlan(null); setError(""); }}>{t("explore.exploreFreely")}</button>
+        </div>
+      </section>
     </VisitorPageShell>
   );
 }
