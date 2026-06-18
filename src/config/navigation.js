@@ -74,3 +74,10 @@ export const DEFAULT_PAGE = {
   [ROLE.VISITOR]: "explore",
   [ROLE.IT_SUPPORT]: "it-dashboard",
 };
+
+export const MOBILE_PAGES = {
+  [ROLE.RANGER]: NAVIGATION[ROLE.RANGER][0].items,
+  [ROLE.VISITOR]: NAVIGATION[ROLE.VISITOR][0].items,
+  [ROLE.ADMIN]: NAVIGATION[ROLE.ADMIN].flatMap((section) => section.items),
+  [ROLE.IT_SUPPORT]: NAVIGATION[ROLE.IT_SUPPORT][0].items,
+};
