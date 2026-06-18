@@ -1,11 +1,15 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
+import Card from "../../components/common/Card.jsx";
+import StatusPill from "../../components/common/StatusPill.jsx";
 import { ZONES } from "../../data/trees.js";
+import { filterTrees } from "../../services/mockTreeService.js";
 
-export default function InventoryPage() {
+export default function InventoryPage({ trees }) {
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
   const [status, setStatus] = useState("all");
   const [addOpen, setAddOpen] = useState(false);
+  const visibleTrees = useMemo(() => filterTrees({ trees, query, zone, status }), [trees, query, zone, status]);
 
   return (
     <>
@@ -17,6 +21,11 @@ export default function InventoryPage() {
           <button className="button button-small" onClick={() => setAddOpen(true)}>+ Add Tree</button>
         </div>
       </div>
+      <Card>
+        <div className="table-wrap"><table><thead><tr><th>Tree ID</th><th>Species</th><th>Scientific name</th><th>Zone</th><th>Age</th><th>Health</th><th>Status</th><th>Action</th></tr></thead>
+          <tbody>{visibleTrees.map((tree) => <tr key={tree.id}><td>{tree.id}</td><td>{tree.name}</td><td><em>{tree.scientificName}</em></td><td>{tree.zone}</td><td>{tree.age} yrs</td><td>{tree.health}%</td><td><StatusPill status={tree.status} /></td><td><button className="table-action">View QR</button></td></tr>)}</tbody>
+        </table></div>
+      </Card>
     </>
   );
 }
