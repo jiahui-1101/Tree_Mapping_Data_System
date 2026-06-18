@@ -6,6 +6,20 @@ import { visitorText } from "../../services/visitorI18n.js";
 
 const GROWTH_YEARS = [5, 10, 25, 50];
 
+function GrowthVisual({ profile, projection, confidence, t }) {
+  return (
+    <div className="growth-photo-model" aria-label={`${t("profiles.aiSimulator")} ${projection.years}${t("profiles.yearSuffix")}`}>
+      <TreePhoto src={profile.photoUrl} alt={profile.photoAlt} className="growth-photo">
+        <span className="growth-current-year">+{projection.years}{t("profiles.yearSuffix")} {t("profiles.ecologyForecast")}</span>
+      </TreePhoto>
+      <div className="growth-model-legend">
+        <span>{t("profiles.representativePhoto")}: <b>{profile.name}</b></span>
+        <span>{t("profiles.modelConfidence")}: <b>{confidence}%</b></span>
+      </div>
+    </div>
+  );
+}
+
 export default function TreeIdCardModal({ tree, language, onClose, onCollect }) {
   const [mode, setMode] = useState("explorer");
   const t = (path, values) => visitorText(language, path, values);
