@@ -16,6 +16,7 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
   const [zone, setZone] = useState("all");
   const [selectedAlert, setSelectedAlert] = useState(null);
   const visibleTrees = useMemo(() => zone === "all" ? trees : trees.filter((tree) => tree.zone === zone), [trees, zone]);
+  const count = (status) => visibleTrees.filter((tree) => tree.status === status).length;
 
   return (
     <>
@@ -33,10 +34,19 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
       </div>
 
       {activeTab === "overview" && (
-        <Card title="SS1 Dashboard" subtitle="Tree health monitoring workspace">
-          <p>{visibleTrees.length} tree records are ready for health monitoring.</p>
-        </Card>
+        <>
+          <div className="metric-grid">
+            <Metric label="Visible trees" value={visibleTrees.length} trend={zone === "all" ? "All garden records" : `Filtered: ${zone}`} />
+            <Metric label="Healthy" value={count("healthy")} trend="Stable condition" tone="healthy" />
+            <Metric label="Under monitor" value={count("monitor")} trend="Review field reports" tone="warning" />
+            <Metric label="Critical" value={count("critical")} trend="Immediate attention" tone="critical" />
+          </div>
+        </>
       )}
     </>
   );
+}
+
+function Metric({ label, value, trend, tone = "" }) {
+  return <article className={`metric-card metric-${tone}`}><span className="metric-icon">●</span><strong>{value}</strong><b>{label}</b><small>{trend}</small></article>;
 }
