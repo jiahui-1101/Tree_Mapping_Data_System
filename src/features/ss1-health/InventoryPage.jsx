@@ -6,7 +6,7 @@ import TreeQrLabel from "../../components/qr/TreeQrLabel.jsx";
 import { ZONES } from "../../data/trees.js";
 import { filterTrees } from "../../services/mockTreeService.js";
 
-export default function InventoryPage({ trees, qrCodes = [], onArchiveTree, onUpdateTree, showToast }) {
+export default function InventoryPage({ trees, qrCodes = [], onAddTree, onArchiveTree, onUpdateTree, showToast }) {
   const [query, setQuery] = useState("");
   const [zone, setZone] = useState("all");
   const [status, setStatus] = useState("all");
@@ -14,6 +14,8 @@ export default function InventoryPage({ trees, qrCodes = [], onArchiveTree, onUp
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [editDraft, setEditDraft] = useState(null);
+  const [name, setName] = useState("");
+  const [scientificName, setScientificName] = useState("");
   const visibleTrees = useMemo(() => filterTrees({ trees, query, zone, status }), [trees, query, zone, status]);
 
   return (
@@ -48,6 +50,12 @@ export default function InventoryPage({ trees, qrCodes = [], onArchiveTree, onUp
         <label className="field-label">Status</label><select value={editDraft.status} onChange={(event) => setEditDraft({ ...editDraft, status: event.target.value })}><option value="healthy">Healthy</option><option value="monitor">Monitor</option><option value="critical">Critical</option></select>
         <label className="field-label">Description</label><textarea value={editDraft.description} onChange={(event) => setEditDraft({ ...editDraft, description: event.target.value })} />
         <button className="button button-block" disabled={!editDraft.name || !editDraft.scientificName} onClick={() => { onUpdateTree(editDraft.id, editDraft); setSelected(editDraft); setEditOpen(false); showToast("Tree record updated in admin prototype."); }}>Save Tree Record</button>
+      </Modal>}
+      {addOpen && <Modal title="Add New Tree & Generate QR" onClose={() => setAddOpen(false)}>
+        <p className="muted">Submitting creates a mock tree ID and QR label for the UI prototype.</p>
+        <label className="field-label">Common name</label><input value={name} onChange={(event) => setName(event.target.value)} placeholder="e.g. Angsana" />
+        <label className="field-label">Scientific name</label><input value={scientificName} onChange={(event) => setScientificName(event.target.value)} placeholder="e.g. Pterocarpus indicus" />
+        <button className="button button-block" disabled={!name || !scientificName} onClick={() => { onAddTree({ name, scientificName }); setAddOpen(false); }}>Add Tree & Generate QR</button>
       </Modal>}
     </>
   );
