@@ -2,20 +2,20 @@ import { useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import GardenMap from "../../components/map/GardenMap.jsx";
 import { ROLE } from "../../models.js";
+import { evaluateSpatialPoint } from "../../services/spatialPlanningService.js";
 
 export default function SpatialPage({ trees, spatialPlanningRecords = [], onConfirmSpatialPlan, showToast }) {
   const initial = { x: 53, y: 43 };
   const [point, setPoint] = useState(initial);
-  const [score, setScore] = useState(78);
+  const [score, setScore] = useState(() => evaluateSpatialPoint(initial).score);
   const [species, setSpecies] = useState("Pterocarpus indicus");
   const [targetZone, setTargetZone] = useState("Arboretum");
-  const tone = score >= 70 ? "High" : score >= 45 ? "Medium" : "Low";
-  const reasoning = tone === "Low" ? "Move the marker farther from existing trees and facilities." : "No significant canopy conflict detected.";
+  const { tone, reasoning } = evaluateSpatialPoint({ ...point, score });
 
   return (
     <div className="two-column spatial-layout">
       <Card title="AI Spatial Planning Simulation" subtitle="Click the map to move the proposed planting point">
-        <GardenMap role={ROLE.ADMIN} trees={trees} proposedPoint={point} onMapClick={(next) => { setPoint(next); setScore(next.x > 76 || next.y < 15 ? 41 : 78); }} compact />
+        <GardenMap role={ROLE.ADMIN} trees={trees} proposedPoint={point} onMapClick={(next) => { setPoint(next); setScore(evaluateSpatialPoint(next).score); }} compact />
         <div className={`suitability suitability-${tone.toLowerCase()}`}>
           <strong>AI Suitability: {score}% - {tone}</strong>
           <p>Canopy and root-radius overlay mock. {reasoning}</p>
