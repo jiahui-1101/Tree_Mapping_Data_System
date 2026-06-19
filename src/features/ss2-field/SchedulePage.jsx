@@ -53,3 +53,4 @@ export default function SchedulePage({ tasks = [], onAddTask, showToast }) {
     </>
   );
 }
+
