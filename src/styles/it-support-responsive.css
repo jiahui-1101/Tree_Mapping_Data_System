@@ -1,0 +1,28 @@
+@media (max-width: 900px) {
+  .it-support-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .it-support-tabs button {
+    flex: 1 1 150px;
+  }
+}
+
+@media (max-width: 640px) {
+  .it-support-header,
+  .it-support-content {
+    padding-right: 16px;
+    padding-left: 16px;
+  }
+
+  .it-support-tabs {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-return {
+    right: 16px;
+    bottom: 16px;
+  }
+}
