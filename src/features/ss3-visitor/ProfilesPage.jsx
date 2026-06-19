@@ -35,3 +35,4 @@ export default function ProfilesPage({ trees, language, onCollect }) {
     </VisitorPageShell>
   );
 }
+
