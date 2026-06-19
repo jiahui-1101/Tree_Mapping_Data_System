@@ -146,3 +146,4 @@ export default function DashboardPage({ trees, fieldReports = [], onNavigate, sh
 function Metric({ label, value, trend, tone = "" }) {
   return <article className={`metric-card metric-${tone}`}><span className="metric-icon">●</span><strong>{value}</strong><b>{label}</b><small>{trend}</small></article>;
 }
+

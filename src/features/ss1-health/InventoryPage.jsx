@@ -60,3 +60,4 @@ export default function InventoryPage({ trees, qrCodes = [], onAddTree, onArchiv
     </>
   );
 }
+
