@@ -8,7 +8,14 @@ export default function Toast({ message, onClose }) {
 
   if (!message) return null;
   return (
-    <button className="toast" onClick={onClose}>
+    <button
+      type="button"
+      className="toast"
+      role="status"
+      aria-live="polite"
+      aria-label={`Notification: ${message}. Click to dismiss.`}
+      onClick={onClose}
+    >
       <strong>Done</strong>
       <span>{message}</span>
     </button>
