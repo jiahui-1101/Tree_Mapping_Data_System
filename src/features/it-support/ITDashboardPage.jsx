@@ -4,12 +4,14 @@ import { AUDIT_LOGS } from "../../data/auditLogs.js";
 import { ACCESS_USERS, SUPPORT_TICKETS, SYSTEM_SERVICES } from "../../data/itSupport.js";
 import ITMetricCard from "./ITMetricCard.jsx";
 import ServiceHealthCard from "./ServiceHealthCard.jsx";
+import { getITOperationsSummary } from "../../services/itSupportService.js";
 
 export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, showToast }) {
-  const degradedServices = SYSTEM_SERVICES.filter((service) => service.status !== "online").length;
-  const failedLogins = auditLogs.filter((log) => log.event.toLowerCase().includes("failed")).length;
-  const lockedAccounts = ACCESS_USERS.filter((user) => user.status === "locked").length;
-  const highRiskEvents = auditLogs.filter((log) => log.severity === "high").length;
+  const { degradedServices, failedLogins, lockedAccounts, highRiskEvents } = getITOperationsSummary({
+    services: SYSTEM_SERVICES,
+    users: ACCESS_USERS,
+    auditLogs,
+  });
   const activeTickets = SUPPORT_TICKETS.filter((ticket) => ticket.status !== "resolved");
 
   return (

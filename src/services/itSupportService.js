@@ -1,4 +1,17 @@
-import { ACCESS_USERS, SERVICE_LOGS } from "../data/itSupport.js";
+import { ACCESS_USERS, SERVICE_LOGS, SYSTEM_SERVICES } from "../data/itSupport.js";
+
+export function getITOperationsSummary({
+  services = SYSTEM_SERVICES,
+  users = ACCESS_USERS,
+  auditLogs = [],
+} = {}) {
+  return {
+    degradedServices: services.filter((service) => service.status !== "online").length,
+    failedLogins: auditLogs.filter((log) => log.event.toLowerCase().includes("failed")).length,
+    lockedAccounts: users.filter((user) => user.status === "locked").length,
+    highRiskEvents: auditLogs.filter((log) => log.severity === "high").length,
+  };
+}
 
 export function filterAccessUsers(users = ACCESS_USERS, { query = "", role = "all", status = "all", session = "all" } = {}) {
   const needle = query.trim().toLowerCase();
