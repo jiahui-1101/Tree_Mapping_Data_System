@@ -2,7 +2,6 @@ import { useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { SUPPORT_TICKETS } from "../../data/itSupport.js";
-import TicketFilters from "./TicketFilters.jsx";
 
 export default function IncidentTicketsPage({ showToast }) {
   const [tickets, setTickets] = useState(SUPPORT_TICKETS);
@@ -23,14 +22,19 @@ export default function IncidentTicketsPage({ showToast }) {
 
   return (
     <Card title="Incident Tickets" subtitle="Mock support queue for IT Support follow-up">
-      <TicketFilters
-        status={status}
-        priority={priority}
-        category={category}
-        onStatusChange={setStatus}
-        onPriorityChange={setPriority}
-        onCategoryChange={setCategory}
-      />
+      <div className="page-toolbar">
+        <div className="toolbar-actions">
+          <select value={status} onChange={(event) => setStatus(event.target.value)}>
+            <option value="all">All status</option><option value="open">Open</option><option value="investigating">Investigating</option><option value="resolved">Resolved</option>
+          </select>
+          <select value={priority} onChange={(event) => setPriority(event.target.value)}>
+            <option value="all">All priority</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option>
+          </select>
+          <select value={category} onChange={(event) => setCategory(event.target.value)}>
+            <option value="all">All category</option><option value="QR">QR</option><option value="Security">Security</option><option value="Map">Map</option><option value="AI">AI</option>
+          </select>
+        </div>
+      </div>
       <div className="it-ticket-board">
         {filtered.map((ticket) => (
           <article className={`task-card priority-${ticket.priority}`} key={ticket.id}>
@@ -50,3 +54,4 @@ export default function IncidentTicketsPage({ showToast }) {
     </Card>
   );
 }
+
