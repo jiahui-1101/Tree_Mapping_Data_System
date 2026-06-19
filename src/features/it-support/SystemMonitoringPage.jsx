@@ -1,9 +1,8 @@
 import { useState } from "react";
 import Card from "../../components/common/Card.jsx";
-import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { SERVICE_LOGS, SYSTEM_SERVICES } from "../../data/itSupport.js";
-import { filterServiceLogs, getServiceLogs } from "../../services/itSupportService.js";
+import ServiceLogViewer from "./ServiceLogViewer.jsx";
 
 export default function SystemMonitoringPage({ showToast }) {
   const [services, setServices] = useState(SYSTEM_SERVICES);
@@ -51,23 +50,13 @@ export default function SystemMonitoringPage({ showToast }) {
         </div>
       </Card>
       {selectedService && (
-        <Modal title={`${selectedService.name} Logs`} onClose={() => setSelectedService(null)} wide>
-          <div className="page-toolbar">
-            <p className="muted">{selectedService.dependency} · {getServiceLogs(selectedService.id, logs).length} demo log entries</p>
-            <select value={logLevel} onChange={(event) => setLogLevel(event.target.value)}>
-              <option value="all">All levels</option><option value="info">Info</option><option value="warning">Warning</option><option value="error">Error</option>
-            </select>
-          </div>
-          <div className="it-log-list">
-            {filterServiceLogs(getServiceLogs(selectedService.id, logs), logLevel).map((log, index) => (
-              <article className={`it-log-item it-log-${log.level}`} key={`${log.serviceId}-${log.time}-${index}`}>
-                <span><strong>{log.time}</strong><StatusPill status={log.level} /></span>
-                <p>{log.message}</p>
-                <small>{log.source}</small>
-              </article>
-            ))}
-          </div>
-        </Modal>
+        <ServiceLogViewer
+          service={selectedService}
+          logs={logs}
+          level={logLevel}
+          onLevelChange={setLogLevel}
+          onClose={() => setSelectedService(null)}
+        />
       )}
     </>
   );
