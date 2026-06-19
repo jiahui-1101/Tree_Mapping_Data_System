@@ -2,6 +2,7 @@ import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { AUDIT_LOGS } from "../../data/auditLogs.js";
 import { ACCESS_USERS, SUPPORT_TICKETS, SYSTEM_SERVICES } from "../../data/itSupport.js";
+import ITMetricCard from "./ITMetricCard.jsx";
 
 export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, showToast }) {
   const degradedServices = SYSTEM_SERVICES.filter((service) => service.status !== "online").length;
@@ -13,10 +14,10 @@ export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, sh
   return (
     <>
       <div className="metric-grid">
-        <div className="metric-card metric-warning"><b>Service watch</b><strong>{degradedServices}</strong><small>Degraded dependencies</small></div>
-        <div className="metric-card metric-critical"><b>Security alerts</b><strong>{highRiskEvents}</strong><small>High severity audit events</small></div>
-        <div className="metric-card"><b>Failed logins</b><strong>{failedLogins}</strong><small>Detected in current audit sample</small></div>
-        <div className="metric-card"><b>Locked accounts</b><strong>{lockedAccounts}</strong><small>Require IT review</small></div>
+        <ITMetricCard label="Service watch" value={degradedServices} detail="Degraded dependencies" tone="warning" />
+        <ITMetricCard label="Security alerts" value={highRiskEvents} detail="High severity audit events" tone="critical" />
+        <ITMetricCard label="Failed logins" value={failedLogins} detail="Detected in current audit sample" />
+        <ITMetricCard label="Locked accounts" value={lockedAccounts} detail="Require IT review" />
       </div>
 
       <Card title="System Health Overview" subtitle="Operational services watched by IT Support">
