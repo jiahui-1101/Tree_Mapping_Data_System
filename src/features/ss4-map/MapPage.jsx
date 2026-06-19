@@ -4,7 +4,8 @@ import GardenMap from "../../components/map/GardenMap.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { MAP_ZONES, TBJ_GOOGLE_MAPS_URL, TBJ_MAP_FACTS, TBJ_OFFICIAL_CONTEXT, TBJ_OFFICIAL_SOURCE_URL, TBJ_STAKEHOLDER_PLOTS, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotsByZone, getStakeholderSourceGroup } from "../../data/gardenMap.js";
-import { DEFAULT_MAP_LAYER, MAP_LAYERS } from "../../config/mapLayers.js";
+import { DEFAULT_MAP_LAYER } from "../../config/mapLayers.js";
+import MapLayerSelector from "./MapLayerSelector.jsx";
 
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
   const [layer, setLayer] = useState(DEFAULT_MAP_LAYER);
@@ -21,7 +22,7 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
   const topTrafficPoint = visitorHeatmapAggregates.slice().sort((a, b) => b.scanCount - a.scanCount)[0];
   return (
     <>
-      <Card title="Taman Botani Johor 3D Map" subtitle="Official JLN zones combined with stakeholder plant inventory docs" actions={<div className="layer-buttons">{MAP_LAYERS.map((item) => <button key={item.id} className={layer === item.id ? "active" : ""} onClick={() => setLayer(item.id)}>{item.label}</button>)}</div>}>
+      <Card title="Taman Botani Johor 3D Map" subtitle="Official JLN zones combined with stakeholder plant inventory docs" actions={<MapLayerSelector activeLayer={layer} onChange={setLayer} />}>
         <GardenMap
           role={role}
           trees={trees}
