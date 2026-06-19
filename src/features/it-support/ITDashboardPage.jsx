@@ -3,6 +3,7 @@ import StatusPill from "../../components/common/StatusPill.jsx";
 import { AUDIT_LOGS } from "../../data/auditLogs.js";
 import { ACCESS_USERS, SUPPORT_TICKETS, SYSTEM_SERVICES } from "../../data/itSupport.js";
 import ITMetricCard from "./ITMetricCard.jsx";
+import ServiceHealthCard from "./ServiceHealthCard.jsx";
 
 export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, showToast }) {
   const degradedServices = SYSTEM_SERVICES.filter((service) => service.status !== "online").length;
@@ -23,11 +24,7 @@ export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, sh
       <Card title="System Health Overview" subtitle="Operational services watched by IT Support">
         <div className="it-service-grid">
           {SYSTEM_SERVICES.map((service) => (
-            <article className={`it-service-card it-service-${service.status}`} key={service.id}>
-              <span><strong>{service.name}</strong><StatusPill status={service.status} /></span>
-              <p>{service.dependency}</p>
-              <small>{service.latency} latency · {service.lastChecked}</small>
-            </article>
+            <ServiceHealthCard key={service.id} service={service} />
           ))}
         </div>
       </Card>
