@@ -49,6 +49,75 @@ src/
 test/            Node integration and service tests
 ```
 
+## Module to Frontend Script Mapping
+
+The links below provide a direct index from each functional module to its main
+frontend implementation files.
+
+### Shared Backbone and QR
+
+| Module | Frontend Script |
+| --- | --- |
+| Application entry and routing | [App.jsx](src/App.jsx) |
+| Authentication and role login | [LoginPage.jsx](src/features/auth/LoginPage.jsx), [demoUsers.js](src/config/demoUsers.js) |
+| Application shell | [AppShell.jsx](src/components/layout/AppShell.jsx) |
+| Desktop navigation | [Sidebar.jsx](src/components/layout/Sidebar.jsx), [Topbar.jsx](src/components/layout/Topbar.jsx) |
+| Mobile navigation | [MobileNav.jsx](src/components/layout/MobileNav.jsx) |
+| Role navigation configuration | [navigation.js](src/config/navigation.js) |
+| Shared notification and modal UI | [Toast.jsx](src/components/common/Toast.jsx), [Modal.jsx](src/components/common/Modal.jsx) |
+| QR interaction page | [QRPage.jsx](src/components/qr/QRPage.jsx) |
+| Role-aware QR scanner | [QRScanner.jsx](src/components/qr/QRScanner.jsx) |
+| Printable tree QR label | [TreeQrLabel.jsx](src/components/qr/TreeQrLabel.jsx) |
+
+### Subsystem 1 - Tree Health
+
+| Module | Frontend Script |
+| --- | --- |
+| Tree health dashboard | [DashboardPage.jsx](src/features/ss1-health/DashboardPage.jsx) |
+| Tree inventory management | [InventoryPage.jsx](src/features/ss1-health/InventoryPage.jsx) |
+| Predictive maintenance | [MaintenancePage.jsx](src/features/ss1-health/MaintenancePage.jsx) |
+
+### Subsystem 2 - Ranger and Field Operations
+
+| Module | Frontend Script |
+| --- | --- |
+| Workforce schedule | [SchedulePage.jsx](src/features/ss2-field/SchedulePage.jsx) |
+| Ranger management | [RangerManagementPage.jsx](src/features/ss2-field/RangerManagementPage.jsx) |
+| Administrative task tracker | [TaskTrackerPage.jsx](src/features/ss2-field/TaskTrackerPage.jsx) |
+| Ranger task workflow | [RangerTasksPage.jsx](src/features/ss2-field/RangerTasksPage.jsx) |
+| Ranger field reports | [RangerReportsPage.jsx](src/features/ss2-field/RangerReportsPage.jsx) |
+
+### Subsystem 3 - Visitor Experience
+
+| Module | Frontend Script |
+| --- | --- |
+| Garden exploration and route | [ExplorePage.jsx](src/features/ss3-visitor/ExplorePage.jsx) |
+| Tree profiles | [ProfilesPage.jsx](src/features/ss3-visitor/ProfilesPage.jsx) |
+| Visitor collection | [CollectionPage.jsx](src/features/ss3-visitor/CollectionPage.jsx) |
+| Botanical assistant | [ChatPage.jsx](src/features/ss3-visitor/ChatPage.jsx) |
+| Tree identification card | [TreeIdCardModal.jsx](src/features/ss3-visitor/TreeIdCardModal.jsx) |
+
+### Subsystem 4 - Mapping Operations
+
+| Module | Frontend Script |
+| --- | --- |
+| 3D garden map page | [MapPage.jsx](src/features/ss4-map/MapPage.jsx) |
+| Interactive map renderer | [GardenMap.jsx](src/components/map/GardenMap.jsx), [ThreeGardenScene.jsx](src/components/map/ThreeGardenScene.jsx) |
+| Map layer selection and metrics | [MapLayerSelector.jsx](src/features/ss4-map/MapLayerSelector.jsx), [MapOperationsSummary.jsx](src/features/ss4-map/MapOperationsSummary.jsx) |
+| Zone and stakeholder details | [ZoneInventorySummary.jsx](src/features/ss4-map/ZoneInventorySummary.jsx), [StakeholderDetailsPanel.jsx](src/features/ss4-map/StakeholderDetailsPanel.jsx) |
+| Spatial planning | [SpatialPage.jsx](src/features/ss4-map/SpatialPage.jsx), [SpatialConfigForm.jsx](src/features/ss4-map/SpatialConfigForm.jsx), [SpatialSuitability.jsx](src/features/ss4-map/SpatialSuitability.jsx) |
+| Audit operations | [AuditPage.jsx](src/features/ss4-map/AuditPage.jsx), [AuditFilters.jsx](src/features/ss4-map/AuditFilters.jsx), [AuditLogList.jsx](src/features/ss4-map/AuditLogList.jsx) |
+
+### IT Support Operations
+
+| Module | Frontend Script |
+| --- | --- |
+| IT support workspace | [ITSupportShell.jsx](src/features/it-support/ITSupportShell.jsx) |
+| IT operations dashboard | [ITDashboardPage.jsx](src/features/it-support/ITDashboardPage.jsx) |
+| System monitoring and logs | [SystemMonitoringPage.jsx](src/features/it-support/SystemMonitoringPage.jsx), [ServiceLogViewer.jsx](src/features/it-support/ServiceLogViewer.jsx) |
+| Incident ticket management | [IncidentTicketsPage.jsx](src/features/it-support/IncidentTicketsPage.jsx), [TicketFilters.jsx](src/features/it-support/TicketFilters.jsx) |
+| User and access control | [UserAccessPage.jsx](src/features/it-support/UserAccessPage.jsx), [AccessFilters.jsx](src/features/it-support/AccessFilters.jsx) |
+
 ## Application areas
 
 | Area | Purpose |
