@@ -17,3 +17,4 @@ export function createGuestVisitor() {
 export function canAccessPage(role, page) {
   return NAVIGATION[role].some((section) => section.items.some((item) => item.id === page));
 }
+
