@@ -1,0 +1,48 @@
+.layer-buttons button:focus-visible,
+.map-source-links a:focus-visible {
+  outline: 3px solid rgba(67, 140, 90, 0.35);
+  outline-offset: 2px;
+}
+
+.map-legend-list {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.map-legend-list li {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text);
+}
+
+.map-fact-grid article,
+.it-audit-summary article {
+  transition: transform 160ms ease, box-shadow 160ms ease;
+}
+
+.map-fact-grid article:hover,
+.it-audit-summary article:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(8, 30, 15, 0.08);
+}
+
+.zone-record-list p {
+  min-width: 0;
+}
+
+.zone-record-list span,
+.zone-record-list b {
+  overflow-wrap: anywhere;
+}
+
+.suitability[aria-live="polite"] {
+  border-left-width: 4px;
+}
+
+.audit-toolbar .search-input {
+  min-width: min(320px, 100%);
+}

@@ -7,6 +7,7 @@ import "./styles/components.css";
 import "./styles/responsive.css";
 import "./styles/it-support.css";
 import "./styles/it-support-responsive.css";
+import "./styles/ss4-operations.css";
 
 createRoot(document.getElementById("root")).render(
   <React.StrictMode>
