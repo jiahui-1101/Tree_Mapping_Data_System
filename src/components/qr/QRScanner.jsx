@@ -331,3 +331,4 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
     </Modal>
   );
 }
+
