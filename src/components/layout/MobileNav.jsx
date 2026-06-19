@@ -4,15 +4,13 @@ import { visitorText } from "../../services/visitorI18n.js";
 import Icon from "../common/Icon.jsx";
 
 export default function MobileNav({ role, activePage, language, onNavigate }) {
-  const items = MOBILE_PAGES[role] || [];
+  const items = MOBILE_PAGES[role];
   return (
-    <nav className={`mobile-nav mobile-nav-${role}`} aria-label="Mobile navigation">
+    <nav className={`mobile-nav mobile-nav-${role}`}>
       {items.map((item) => (
         <button
-          type="button"
           key={item.id}
           className={activePage === item.id ? "active" : ""}
-          aria-current={activePage === item.id ? "page" : undefined}
           onClick={() => onNavigate(item.id)}
         >
           <Icon name={item.icon} />
@@ -22,3 +20,4 @@ export default function MobileNav({ role, activePage, language, onNavigate }) {
     </nav>
   );
 }
+

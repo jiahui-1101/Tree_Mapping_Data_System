@@ -29,3 +29,4 @@ export default function AppShell({ role, user, activePage, language, onNavigate,
     </div>
   );
 }
+
