@@ -5,6 +5,7 @@ import { filterAuditLogs } from "../../services/mockTreeService.js";
 import { searchAuditLogs, summarizeAuditOperations } from "../../services/auditOperationsService.js";
 import AuditSummary from "./AuditSummary.jsx";
 import AuditFilters from "./AuditFilters.jsx";
+import AuditLogList from "./AuditLogList.jsx";
 
 export default function AuditPage({ auditLogs = AUDIT_LOGS, qrScanEvents = [], showToast }) {
   const [type, setType] = useState("all");
@@ -20,7 +21,7 @@ export default function AuditPage({ auditLogs = AUDIT_LOGS, qrScanEvents = [], s
       <div className="inline-warning">SecurityAlerts demo: high severity events, failed login attempts, and invalid QR scans are counted for IT/Admin review.</div>
       <AuditSummary summary={summary} />
       <AuditFilters query={query} type={type} severity={severity} onQueryChange={setQuery} onTypeChange={setType} onSeverityChange={setSeverity} />
-      <div className="audit-list">{logs.map((log, index) => <article key={`${log.time}-${index}`}><small>{log.time}</small><b className={`audit-${log.type}`}>{log.type}</b><span><strong>{log.actor}</strong><small>{log.role}</small>{log.event}</span><em>{log.severity}</em></article>)}</div>
+      <AuditLogList logs={logs} />
     </Card>
   );
 }
