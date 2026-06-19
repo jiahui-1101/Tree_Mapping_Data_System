@@ -2,6 +2,7 @@ import { useState } from "react";
 import { DEFAULT_IT_PAGE, IT_NAVIGATION } from "../../config/itNavigation.js";
 import ITDashboardPage from "./ITDashboardPage.jsx";
 import SystemMonitoringPage from "./SystemMonitoringPage.jsx";
+import IncidentTicketsPage from "./IncidentTicketsPage.jsx";
 
 export default function ITSupportShell({ showToast }) {
   const [activePage, setActivePage] = useState(DEFAULT_IT_PAGE);
@@ -31,6 +32,7 @@ export default function ITSupportShell({ showToast }) {
           <ITDashboardPage onNavigate={setActivePage} showToast={showToast} />
         )}
         {activePage === "system-monitoring" && <SystemMonitoringPage showToast={showToast} />}
+        {activePage === "incident-tickets" && <IncidentTicketsPage showToast={showToast} />}
       </section>
     </main>
   );
