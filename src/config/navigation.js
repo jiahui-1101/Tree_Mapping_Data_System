@@ -104,3 +104,4 @@ export const PAGE_META = {
   chat: ["AI Botanical Assistant", "Ask about plants in the garden"],
   collection: ["My Collection", "Your botanical discoveries"],
 };
+
