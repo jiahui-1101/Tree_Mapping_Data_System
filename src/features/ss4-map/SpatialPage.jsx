@@ -3,6 +3,7 @@ import Card from "../../components/common/Card.jsx";
 import GardenMap from "../../components/map/GardenMap.jsx";
 import { ROLE } from "../../models.js";
 import { evaluateSpatialPoint } from "../../services/spatialPlanningService.js";
+import SpatialSuitability from "./SpatialSuitability.jsx";
 
 export default function SpatialPage({ trees, spatialPlanningRecords = [], onConfirmSpatialPlan, showToast }) {
   const initial = { x: 53, y: 43 };
@@ -16,11 +17,7 @@ export default function SpatialPage({ trees, spatialPlanningRecords = [], onConf
     <div className="two-column spatial-layout">
       <Card title="AI Spatial Planning Simulation" subtitle="Click the map to move the proposed planting point">
         <GardenMap role={ROLE.ADMIN} trees={trees} proposedPoint={point} onMapClick={(next) => { setPoint(next); setScore(evaluateSpatialPoint(next).score); }} compact />
-        <div className={`suitability suitability-${tone.toLowerCase()}`}>
-          <strong>AI Suitability: {score}% - {tone}</strong>
-          <p>Canopy and root-radius overlay mock. {reasoning}</p>
-          <small>Estimated planting cost: RM 450 · fertilizer: RM 80/month</small>
-        </div>
+        <SpatialSuitability score={score} tone={tone} reasoning={reasoning} />
         <div className="button-row">
           <button className="button" onClick={() => onConfirmSpatialPlan?.({ point, species, targetZone, score, tone, reasoning })}>Confirm Placement</button>
           <button className="button button-outline" onClick={() => { setPoint(initial); setScore(78); }}>Reset</button>
