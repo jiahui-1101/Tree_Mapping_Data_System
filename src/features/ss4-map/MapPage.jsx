@@ -8,6 +8,7 @@ import { DEFAULT_MAP_LAYER } from "../../config/mapLayers.js";
 import MapLayerSelector from "./MapLayerSelector.jsx";
 import MapOperationsSummary from "./MapOperationsSummary.jsx";
 import { summarizeMapOperations } from "../../services/mapOperationsService.js";
+import VisitorHeatmapPanel from "./VisitorHeatmapPanel.jsx";
 
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
   const [layer, setLayer] = useState(DEFAULT_MAP_LAYER);
@@ -38,18 +39,7 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
         summary={operationsSummary}
       />
       {layer === "visitors" && (
-        <Card title="Visitor Activity Heatmap" subtitle="VisitorHeatmapAggregate records shown on the map layer">
-          <div className="zone-record-list">
-            <p><span>Total anonymous scans</span><b>{operationsSummary.totalVisitorScans}</b></p>
-            <p><span>Highest traffic point</span><b>{operationsSummary.topTrafficPoint ? `${operationsSummary.topTrafficPoint.treeId} · ${operationsSummary.topTrafficPoint.trafficLevel}` : "No visitor aggregate"}</b></p>
-            {visitorHeatmapAggregates.map((aggregate) => (
-              <p key={aggregate.aggregateId}>
-                <span>{aggregate.treeId} · {aggregate.zoneId}</span>
-                <b>{aggregate.scanCount} scans · {aggregate.uniqueSessions} sessions</b>
-              </p>
-            ))}
-          </div>
-        </Card>
+        <VisitorHeatmapPanel aggregates={visitorHeatmapAggregates} summary={operationsSummary} />
       )}
       <div className="two-column map-stats">
         <Card title="Demo Inventory Records by Official Zone" subtitle="Counts below come from loaded prototype records, not official tree totals.">
