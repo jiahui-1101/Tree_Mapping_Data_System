@@ -184,6 +184,19 @@ Keep subsystem work in focused commits. Do not commit `node_modules`, generated
 `dist` output, local environment files, or unrelated module changes. Fetch and
 integrate the latest shared `main` branch before pushing.
 
+## Team Contributions
+
+Team **NextLevel**
+
+| Team member | Role | Contributions evidenced in the repository | Visible non-merge commits* |
+|---|---|---|---:|
+| **Wong Jia Hui** | **Team Leader · Frontend Integration Lead** | Integrated the four subsystems and aligned authentication, navigation, shared UI, services and tests; contributed 3D/map visualisation, QR workflows, visitor data/localisation, responsive styling and consolidated documentation. | **88 / 157** |
+| **Christ Ting Shin Ling** | **Tree Health & Application Shell Developer** | Built SS1 tree-health dashboards, inventory and maintenance flows, and contributed the role-based app shell, session state, navigation, responsive drawer and cross-module actions. | **31 / 157** |
+| **Lee Mei Shuet** | **Visitor Engagement Developer** | Developed SS3 visitor explore, profile, collection and chat experiences, route building, multilingual bot behaviour, tree ID modal and AI-style growth simulator. | **19 / 157** |
+| **Loh Su Ting** | **Field Operations & IT Support Developer** | Developed ranger scheduling, task and report workflows, personnel management, photo analysis, visitor routing/data services, localisation, access control, support ticketing and system monitoring. | **19 / 157** |
+
+<sub>*Counts are non-merge commits visible in the public Git history. They are included for transparency and are not a code-ownership metric.</sub>
+
 ## Data and Privacy Note
 
 This repository uses prototype records for coursework demonstrations. Protected
