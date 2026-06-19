@@ -1,19 +1,119 @@
-# Tree Mapping Data System
+# Tree Mapping Data System for Johor Botanical Garden
 
-A modular React prototype for managing tree records and field operations at
-Taman Botani Johor. The application combines tree health monitoring, ranger
-workflows, visitor experiences, spatial mapping, QR interactions, and IT
-support operations in one role-based interface.
+Frontend prototype for the Johor Botanical Garden Tree Mapping Data System, developed by **NextLevel** for SCSE2243 Application Development.
 
-## Technology
+The system is designed to digitise tree inventory, field operations, visitor education, QR-based access, and map-based decision support for garden management. This repository contains the React/Vite user interface prototype with mock data, simulated AI responses, and role-based flows for demonstration.
 
-- React 19
-- Vite 7
-- Three.js for the interactive garden scene
-- QRCode for printable tree labels
-- Node's built-in test runner
+## Project Background
 
-## Getting started
+Johor Botanical Garden requires a more efficient way to manage tree records, monitor tree health, assign ranger tasks, guide visitors, and visualise garden activity. The proposed Tree Mapping Data System combines four connected subsystems:
+
+- **SS1 - Tree Health Monitoring & Diagnostics**: dashboard, inventory, health insights, and predictive maintenance UI.
+- **SS2 - Scheduling & Field Task Management**: ranger accounts, workforce schedule, task tracker, and QR-based field reporting.
+- **SS3 - Visitor Engagement & Education**: tree profiles, visitor route exploration, AI botanical assistant UI, multilingual content, and collection history.
+- **SS4 - Map, QR & Interactive Visualization System**: garden map, QR scan routing, spatial planning simulation, overlay analytics, and audit log.
+
+The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and **IT Support**.
+
+## GitHub Module Index
+
+<table>
+  <tr>
+    <th>Module</th>
+    <th>Frontend Script</th>
+  </tr>
+  <tr>
+    <td>Authentication and Role Access</td>
+    <td>
+      <a href="src/features/auth/LoginPage.jsx">LoginPage.jsx</a><br>
+      <a href="src/services/mockAuthService.js">mockAuthService.js</a>
+    </td>
+  </tr>
+  <tr>
+    <td>App Shell and Navigation</td>
+    <td>
+      <a href="src/App.jsx">App.jsx</a><br>
+      <a href="src/config/navigation.js">navigation.js</a><br>
+      <a href="src/components/layout/AppShell.jsx">AppShell.jsx</a>
+    </td>
+  </tr>
+  <tr>
+    <td>SS1 - Tree Health Monitoring and Diagnostics</td>
+    <td>
+      <a href="src/features/ss1-health/DashboardPage.jsx">DashboardPage.jsx</a><br>
+      <a href="src/features/ss1-health/InventoryPage.jsx">InventoryPage.jsx</a><br>
+      <a href="src/features/ss1-health/MaintenancePage.jsx">MaintenancePage.jsx</a>
+    </td>
+  </tr>
+  <tr>
+    <td>SS2 - Scheduling and Field Task Management</td>
+    <td>
+      <a href="src/features/ss2-field/SchedulePage.jsx">SchedulePage.jsx</a><br>
+      <a href="src/features/ss2-field/TaskTrackerPage.jsx">TaskTrackerPage.jsx</a><br>
+      <a href="src/features/ss2-field/RangerTasksPage.jsx">RangerTasksPage.jsx</a><br>
+      <a href="src/features/ss2-field/RangerReportsPage.jsx">RangerReportsPage.jsx</a><br>
+      <a href="src/features/ss2-field/RangerManagementPage.jsx">RangerManagementPage.jsx</a>
+    </td>
+  </tr>
+  <tr>
+    <td>SS3 - Visitor Engagement and Education</td>
+    <td>
+      <a href="src/features/ss3-visitor/ExplorePage.jsx">ExplorePage.jsx</a><br>
+      <a href="src/features/ss3-visitor/ProfilesPage.jsx">ProfilesPage.jsx</a><br>
+      <a href="src/features/ss3-visitor/ChatPage.jsx">ChatPage.jsx</a><br>
+      <a href="src/features/ss3-visitor/CollectionPage.jsx">CollectionPage.jsx</a><br>
+      <a href="src/features/ss3-visitor/TreeIdCardModal.jsx">TreeIdCardModal.jsx</a>
+    </td>
+  </tr>
+  <tr>
+    <td>SS4 - Map, QR and Interactive Visualization</td>
+    <td>
+      <a href="src/features/ss4-map/MapPage.jsx">MapPage.jsx</a><br>
+      <a href="src/features/ss4-map/SpatialPage.jsx">SpatialPage.jsx</a><br>
+      <a href="src/features/ss4-map/AuditPage.jsx">AuditPage.jsx</a><br>
+      <a href="src/components/map/GardenMap.jsx">GardenMap.jsx</a><br>
+      <a href="src/components/qr/QRPage.jsx">QRPage.jsx</a><br>
+      <a href="src/components/qr/QRScanner.jsx">QRScanner.jsx</a><br>
+      <a href="src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a>
+    </td>
+  </tr>
+  <tr>
+    <td>IT Support Operations</td>
+    <td>
+      <a href="src/features/it-support/ITDashboardPage.jsx">ITDashboardPage.jsx</a><br>
+      <a href="src/features/it-support/SystemMonitoringPage.jsx">SystemMonitoringPage.jsx</a><br>
+      <a href="src/features/it-support/UserAccessPage.jsx">UserAccessPage.jsx</a><br>
+      <a href="src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a>
+    </td>
+  </tr>
+  <tr>
+    <td>Mock Data and Services</td>
+    <td>
+      <a href="src/data">src/data</a><br>
+      <a href="src/services">src/services</a>
+    </td>
+  </tr>
+</table>
+
+## Features
+
+- Role-based login and navigation for Admin, Ranger, Visitor, and IT Support users.
+- Admin dashboard for tree health summaries, AI-style alerts, task progress, and inventory updates.
+- Ranger workflow for assigned tasks, QR tree scanning, and field report submission.
+- Visitor portal with route exploration, tree profiles, collection history, multilingual UI text, and botanical chat interface.
+- Interactive garden map with tree markers, health status overlays, QR workflows, spatial planning records, and audit visibility.
+- IT support area for system monitoring, user access review, support tickets, and protected operational views.
+
+## Tech Stack
+
+- **React** for the frontend interface.
+- **Vite** for local development and production build tooling.
+- **Three.js** for the 3D garden scene.
+- **qrcode** for QR label generation.
+- **Node.js test runner** for service-level tests.
+- Local mock data and browser `localStorage` for prototype state.
+
+## Run Locally
 
 Requirements: Node.js 20 or newer and npm.
 
@@ -24,112 +124,19 @@ npm install
 npm run dev
 ```
 
-Vite prints the local development address in the terminal. Open that address
-in a modern browser.
+Vite prints the local development address in the terminal. Open that address in
+a modern browser.
 
-## Available commands
+### Available Commands
 
 ```bash
-npm run dev      # start the development server
-npm run build    # create a production build
-npm run preview  # preview the production build
-npm test         # run service and integration tests
+npm run dev      # Start the development server
+npm run build    # Create a production build
+npm run preview  # Preview the production build
+npm test         # Run service and integration tests
 ```
 
-## Source layout
-
-```text
-src/
-  components/    shared layout, QR, map, and UI components
-  config/        navigation, roles, and demo account configuration
-  data/          prototype records and fixtures
-  features/      role and subsystem pages
-  services/      filtering, state, and workflow helpers
-  styles/        shared and subsystem-specific styles
-test/            Node integration and service tests
-```
-
-## Module to Frontend Script Mapping
-
-The links below provide a direct index from each functional module to its main
-frontend implementation files.
-
-### Shared Backbone and QR
-
-| Module | Frontend Script |
-| --- | --- |
-| Application entry and routing | [App.jsx](src/App.jsx) |
-| Authentication and role login | [LoginPage.jsx](src/features/auth/LoginPage.jsx), [demoUsers.js](src/config/demoUsers.js) |
-| Application shell | [AppShell.jsx](src/components/layout/AppShell.jsx) |
-| Desktop navigation | [Sidebar.jsx](src/components/layout/Sidebar.jsx), [Topbar.jsx](src/components/layout/Topbar.jsx) |
-| Mobile navigation | [MobileNav.jsx](src/components/layout/MobileNav.jsx) |
-| Role navigation configuration | [navigation.js](src/config/navigation.js) |
-| Shared notification and modal UI | [Toast.jsx](src/components/common/Toast.jsx), [Modal.jsx](src/components/common/Modal.jsx) |
-| QR interaction page | [QRPage.jsx](src/components/qr/QRPage.jsx) |
-| Role-aware QR scanner | [QRScanner.jsx](src/components/qr/QRScanner.jsx) |
-| Printable tree QR label | [TreeQrLabel.jsx](src/components/qr/TreeQrLabel.jsx) |
-
-### Subsystem 1 - Tree Health
-
-| Module | Frontend Script |
-| --- | --- |
-| Tree health dashboard | [DashboardPage.jsx](src/features/ss1-health/DashboardPage.jsx) |
-| Tree inventory management | [InventoryPage.jsx](src/features/ss1-health/InventoryPage.jsx) |
-| Predictive maintenance | [MaintenancePage.jsx](src/features/ss1-health/MaintenancePage.jsx) |
-
-### Subsystem 2 - Ranger and Field Operations
-
-| Module | Frontend Script |
-| --- | --- |
-| Workforce schedule | [SchedulePage.jsx](src/features/ss2-field/SchedulePage.jsx) |
-| Ranger management | [RangerManagementPage.jsx](src/features/ss2-field/RangerManagementPage.jsx) |
-| Administrative task tracker | [TaskTrackerPage.jsx](src/features/ss2-field/TaskTrackerPage.jsx) |
-| Ranger task workflow | [RangerTasksPage.jsx](src/features/ss2-field/RangerTasksPage.jsx) |
-| Ranger field reports | [RangerReportsPage.jsx](src/features/ss2-field/RangerReportsPage.jsx) |
-
-### Subsystem 3 - Visitor Experience
-
-| Module | Frontend Script |
-| --- | --- |
-| Garden exploration and route | [ExplorePage.jsx](src/features/ss3-visitor/ExplorePage.jsx) |
-| Tree profiles | [ProfilesPage.jsx](src/features/ss3-visitor/ProfilesPage.jsx) |
-| Visitor collection | [CollectionPage.jsx](src/features/ss3-visitor/CollectionPage.jsx) |
-| Botanical assistant | [ChatPage.jsx](src/features/ss3-visitor/ChatPage.jsx) |
-| Tree identification card | [TreeIdCardModal.jsx](src/features/ss3-visitor/TreeIdCardModal.jsx) |
-
-### Subsystem 4 - Mapping Operations
-
-| Module | Frontend Script |
-| --- | --- |
-| 3D garden map page | [MapPage.jsx](src/features/ss4-map/MapPage.jsx) |
-| Interactive map renderer | [GardenMap.jsx](src/components/map/GardenMap.jsx), [ThreeGardenScene.jsx](src/components/map/ThreeGardenScene.jsx) |
-| Map layer selection and metrics | [MapLayerSelector.jsx](src/features/ss4-map/MapLayerSelector.jsx), [MapOperationsSummary.jsx](src/features/ss4-map/MapOperationsSummary.jsx) |
-| Zone and stakeholder details | [ZoneInventorySummary.jsx](src/features/ss4-map/ZoneInventorySummary.jsx), [StakeholderDetailsPanel.jsx](src/features/ss4-map/StakeholderDetailsPanel.jsx) |
-| Spatial planning | [SpatialPage.jsx](src/features/ss4-map/SpatialPage.jsx), [SpatialConfigForm.jsx](src/features/ss4-map/SpatialConfigForm.jsx), [SpatialSuitability.jsx](src/features/ss4-map/SpatialSuitability.jsx) |
-| Audit operations | [AuditPage.jsx](src/features/ss4-map/AuditPage.jsx), [AuditFilters.jsx](src/features/ss4-map/AuditFilters.jsx), [AuditLogList.jsx](src/features/ss4-map/AuditLogList.jsx) |
-
-### IT Support Operations
-
-| Module | Frontend Script |
-| --- | --- |
-| IT support workspace | [ITSupportShell.jsx](src/features/it-support/ITSupportShell.jsx) |
-| IT operations dashboard | [ITDashboardPage.jsx](src/features/it-support/ITDashboardPage.jsx) |
-| System monitoring and logs | [SystemMonitoringPage.jsx](src/features/it-support/SystemMonitoringPage.jsx), [ServiceLogViewer.jsx](src/features/it-support/ServiceLogViewer.jsx) |
-| Incident ticket management | [IncidentTicketsPage.jsx](src/features/it-support/IncidentTicketsPage.jsx), [TicketFilters.jsx](src/features/it-support/TicketFilters.jsx) |
-| User and access control | [UserAccessPage.jsx](src/features/it-support/UserAccessPage.jsx), [AccessFilters.jsx](src/features/it-support/AccessFilters.jsx) |
-
-## Application areas
-
-| Area | Purpose |
-| --- | --- |
-| Shared backbone | Authentication, role navigation, layout, responsive UI, and notifications |
-| Subsystem 1 | Tree health dashboard, inventory, and predictive maintenance |
-| Subsystem 2 | Ranger scheduling, tasks, reports, and workforce management |
-| Subsystem 3 | Visitor exploration, profiles, collection, QR discovery, and assistant |
-| Subsystem 4 | 3D garden map, spatial planning, audit operations, and QR map metrics |
-| IT Support | Service monitoring, incidents, access control, and operational diagnostics |
-
-## Demo accounts
+## Demo Accounts
 
 | Role | ID | Password |
 | --- | --- | --- |
@@ -138,10 +145,33 @@ frontend implementation files.
 | Visitor | `visitor@gmail.com` | `visitor123` |
 | IT Support | `it001` | `support123` |
 
-These credentials are frontend fixtures for demonstration only. They are not
-production authentication secrets.
+Visitors can also continue as guests. Visitor collection history and selected language are stored in browser `localStorage`.
 
-## Validation
+## Prototype Notes
+
+This repository is a frontend UI prototype. The following items are represented by mock data, simulated UI states, or local browser storage only:
+
+- Backend authentication and user session persistence.
+- Database synchronization and server-side storage.
+- Real AI model/API calls for diagnosis, route recommendation, chatbot responses, or spatial planning.
+- QR endpoint generation and production scan routing.
+- GPS validation, push notifications, and offline mobile synchronization.
+- Server-side audit log persistence and security enforcement.
+
+## Project Structure
+
+```text
+src/
+  components/       Shared layout, common UI, map, and QR components
+  config/           Navigation and page metadata
+  data/             Mock records for trees, tasks, reports, audits, and operations
+  features/         Role and subsystem feature pages
+  services/         Mock business logic, auth, storage, ranger, admin, and visitor helpers
+  styles/           Global styles, responsive rules, tokens, and component styles
+test/               Service and integration tests
+```
+
+## Validation and Contributions
 
 Before merging a contribution, run:
 
@@ -150,13 +180,13 @@ npm test
 npm run build
 ```
 
-Keep subsystem work in focused commits. Avoid committing `node_modules`,
-generated `dist` output, local environment files, or unrelated module changes.
-When the shared `main` branch changes, fetch and rebase before pushing so other
-members' commits remain intact.
+Keep subsystem work in focused commits. Do not commit `node_modules`, generated
+`dist` output, local environment files, or unrelated module changes. Fetch and
+integrate the latest shared `main` branch before pushing.
 
-## Data and privacy note
+## Data and Privacy Note
 
-The repository uses prototype records for coursework demonstrations. Protected
-tree coordinates are masked for visitor-safe views, and stakeholder inventory
-figures are contextual sample data rather than surveyed GIS measurements.
+This repository uses prototype records for coursework demonstrations. Protected
+tree coordinates are masked in visitor-facing views, and operational records are
+sample data rather than production or surveyed GIS data.
+
