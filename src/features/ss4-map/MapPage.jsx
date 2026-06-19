@@ -6,6 +6,8 @@ import StatusPill from "../../components/common/StatusPill.jsx";
 import { MAP_ZONES, TBJ_GOOGLE_MAPS_URL, TBJ_MAP_FACTS, TBJ_OFFICIAL_CONTEXT, TBJ_OFFICIAL_SOURCE_URL, TBJ_STAKEHOLDER_PLOTS, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotsByZone, getStakeholderSourceGroup } from "../../data/gardenMap.js";
 import { DEFAULT_MAP_LAYER } from "../../config/mapLayers.js";
 import MapLayerSelector from "./MapLayerSelector.jsx";
+import MapOperationsSummary from "./MapOperationsSummary.jsx";
+import { summarizeMapOperations } from "../../services/mapOperationsService.js";
 
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
   const [layer, setLayer] = useState(DEFAULT_MAP_LAYER);
@@ -15,11 +17,7 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
   const activeZonePlots = selectedZone ? getStakeholderPlotsByZone(selectedZone.id) : [];
   const selectedInventory = selectedPlot?.inventory;
   const selectedGroup = selectedInventory?.groupId ? getStakeholderSourceGroup(selectedInventory.groupId) : null;
-  const activeQr = qrCodes.filter((qr) => qr.qrStatus === "active").length;
-  const invalidatedQr = qrCodes.filter((qr) => qr.qrStatus === "invalidated").length;
-  const successfulScans = qrScanEvents.filter((event) => event.scanResult === "success").length;
-  const totalVisitorScans = visitorHeatmapAggregates.reduce((total, aggregate) => total + aggregate.scanCount, 0);
-  const topTrafficPoint = visitorHeatmapAggregates.slice().sort((a, b) => b.scanCount - a.scanCount)[0];
+  const operationsSummary = summarizeMapOperations({ qrCodes, qrScanEvents, visitorHeatmapAggregates });
   return (
     <>
       <Card title="Taman Botani Johor 3D Map" subtitle="Official JLN zones combined with stakeholder plant inventory docs" actions={<MapLayerSelector activeLayer={layer} onChange={setLayer} />}>
@@ -33,21 +31,17 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
           onPlotClick={(plot) => { setSelectedPlot(plot); setSelectedZone(null); }}
         />
       </Card>
-      <div className="map-fact-grid">
-        <article><strong>{TBJ_MAP_FACTS.areaAcres}</strong><span>total acres</span><small>Official JLN area including active nursery lots</small></article>
-        <article><strong>6</strong><span>official main zones</span><small>Mapped as conceptual 3D operational areas</small></article>
-        <article><strong>{TBJ_STAKEHOLDER_PLOTS.length}</strong><span>stakeholder plots</span><small>Added from plant inventory documents</small></article>
-      </div>
-      <div className="map-fact-grid">
-        <article><strong>{activeQr}</strong><span>active QR labels</span><small>QRCodes.qr_status = active</small></article>
-        <article><strong>{invalidatedQr}</strong><span>invalidated QR</span><small>Archived tree labels blocked at scan time</small></article>
-        <article><strong>{successfulScans}</strong><span>scan ledger events</span><small>QRScanEvents routed by detected role</small></article>
-      </div>
+      <MapOperationsSummary
+        areaAcres={TBJ_MAP_FACTS.areaAcres}
+        zoneCount={MAP_ZONES.length}
+        stakeholderPlotCount={TBJ_STAKEHOLDER_PLOTS.length}
+        summary={operationsSummary}
+      />
       {layer === "visitors" && (
         <Card title="Visitor Activity Heatmap" subtitle="VisitorHeatmapAggregate records shown on the map layer">
           <div className="zone-record-list">
-            <p><span>Total anonymous scans</span><b>{totalVisitorScans}</b></p>
-            <p><span>Highest traffic point</span><b>{topTrafficPoint ? `${topTrafficPoint.treeId} · ${topTrafficPoint.trafficLevel}` : "No visitor aggregate"}</b></p>
+            <p><span>Total anonymous scans</span><b>{operationsSummary.totalVisitorScans}</b></p>
+            <p><span>Highest traffic point</span><b>{operationsSummary.topTrafficPoint ? `${operationsSummary.topTrafficPoint.treeId} · ${operationsSummary.topTrafficPoint.trafficLevel}` : "No visitor aggregate"}</b></p>
             {visitorHeatmapAggregates.map((aggregate) => (
               <p key={aggregate.aggregateId}>
                 <span>{aggregate.treeId} · {aggregate.zoneId}</span>
