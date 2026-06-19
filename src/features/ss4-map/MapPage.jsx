@@ -3,12 +3,13 @@ import Card from "../../components/common/Card.jsx";
 import GardenMap from "../../components/map/GardenMap.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
-import { MAP_ZONES, TBJ_GOOGLE_MAPS_URL, TBJ_MAP_FACTS, TBJ_OFFICIAL_CONTEXT, TBJ_OFFICIAL_SOURCE_URL, TBJ_STAKEHOLDER_PLOTS, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotsByZone, getStakeholderSourceGroup } from "../../data/gardenMap.js";
+import { MAP_ZONES, TBJ_MAP_FACTS, TBJ_OFFICIAL_CONTEXT, TBJ_STAKEHOLDER_PLOTS, formatPlotQuantity, getStakeholderPlotsByZone, getStakeholderSourceGroup } from "../../data/gardenMap.js";
 import { DEFAULT_MAP_LAYER } from "../../config/mapLayers.js";
 import MapLayerSelector from "./MapLayerSelector.jsx";
 import MapOperationsSummary from "./MapOperationsSummary.jsx";
 import { summarizeMapOperations } from "../../services/mapOperationsService.js";
 import VisitorHeatmapPanel from "./VisitorHeatmapPanel.jsx";
+import ZoneInventorySummary from "./ZoneInventorySummary.jsx";
 
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
   const [layer, setLayer] = useState(DEFAULT_MAP_LAYER);
@@ -41,21 +42,7 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
       {layer === "visitors" && (
         <VisitorHeatmapPanel aggregates={visitorHeatmapAggregates} summary={operationsSummary} />
       )}
-      <div className="two-column map-stats">
-        <Card title="Demo Inventory Records by Official Zone" subtitle="Counts below come from loaded prototype records, not official tree totals.">
-          <div className="zone-record-list">{MAP_ZONES.map((zone) => <p key={zone.id}><span>{zone.name}</span><b>{countZoneRecords(trees, zone)}</b></p>)}</div>
-        </Card>
-        <Card title="Map Basis & Privacy">
-          <p>{TBJ_MAP_FACTS.mapNote}</p>
-          <p>{TBJ_MAP_FACTS.crossCheck} Google Maps center: {TBJ_MAP_FACTS.googleMapCenter}.</p>
-          <p>{getMapSourceSummary()}</p>
-          <p>Exact coordinates for protected rare species are hidden from visitor-safe public views. Admin and IT Support retain the operational view.</p>
-          <div className="map-source-links">
-            <a href={TBJ_OFFICIAL_SOURCE_URL} target="_blank" rel="noreferrer">Official JLN information ↗</a>
-            <a href={TBJ_GOOGLE_MAPS_URL} target="_blank" rel="noreferrer">Open Google Maps ↗</a>
-          </div>
-        </Card>
-      </div>
+      <ZoneInventorySummary trees={trees} />
       <div className="two-column map-stats">
         <Card title={selectedPlot ? selectedPlot.name : selectedZone ? selectedZone.name : "Stakeholder Plot Layer"} subtitle={selectedPlot ? selectedPlot.source : selectedZone ? "Official zone selected on the 3D map" : TBJ_OFFICIAL_CONTEXT.description}>
           {selectedPlot ? (
