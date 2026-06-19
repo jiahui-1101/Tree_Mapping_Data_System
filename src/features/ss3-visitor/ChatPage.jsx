@@ -70,3 +70,4 @@ export function ChatFloatingButton({ onClick, language = "en" }) {
   const label = visitorText(language, "chat.floatingLabel");
   return <button className="chat-floating chat-floating-garden" onClick={onClick} aria-label={label}><GardenMascot compact /><span>{label}</span></button>;
 }
+

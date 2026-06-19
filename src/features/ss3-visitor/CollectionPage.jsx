@@ -57,3 +57,4 @@ export default function CollectionPage({ trees, collection, onOpenScanner, langu
     </VisitorPageShell>
   );
 }
+

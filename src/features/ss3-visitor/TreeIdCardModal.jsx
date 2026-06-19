@@ -137,7 +137,8 @@ export default function TreeIdCardModal({ tree, language, onClose, onCollect }) 
 
         <button className="button button-block" onClick={() => onCollect?.(tree)}>{t("profiles.collect")}</button>
         <p className="public-data-note">{t("profiles.demoNotice")}</p>
-      </div>
+        </div>
     </Modal>
   );
 }
+
