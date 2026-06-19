@@ -3,6 +3,7 @@ import { DEFAULT_IT_PAGE, IT_NAVIGATION } from "../../config/itNavigation.js";
 import ITDashboardPage from "./ITDashboardPage.jsx";
 import SystemMonitoringPage from "./SystemMonitoringPage.jsx";
 import IncidentTicketsPage from "./IncidentTicketsPage.jsx";
+import UserAccessPage from "./UserAccessPage.jsx";
 
 export default function ITSupportShell({ showToast }) {
   const [activePage, setActivePage] = useState(DEFAULT_IT_PAGE);
@@ -33,6 +34,7 @@ export default function ITSupportShell({ showToast }) {
         )}
         {activePage === "system-monitoring" && <SystemMonitoringPage showToast={showToast} />}
         {activePage === "incident-tickets" && <IncidentTicketsPage showToast={showToast} />}
+        {activePage === "user-access" && <UserAccessPage showToast={showToast} />}
       </section>
     </main>
   );
