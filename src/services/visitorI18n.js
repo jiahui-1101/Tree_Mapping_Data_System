@@ -487,3 +487,4 @@ export function visitorTreeDescription(language, tree) {
 }
 
 export const VISITOR_INTEREST_IDS = ["rare", "ancient", "medicinal", "butterfly", "shaded", "photo"];
+
