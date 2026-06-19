@@ -97,3 +97,4 @@ export function filterAuditLogs(logs, type = "all", severity = "all") {
     return severity === "all" || log.severity === severity;
   });
 }
+

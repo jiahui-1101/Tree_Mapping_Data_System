@@ -38,3 +38,4 @@ export function buildUrgentTask({ ranger = "Ahmad Razif", issue = "", treeId = "
 export function updateTreeRecord(trees = [], id = "", patch = {}) {
   return trees.map((tree) => tree.id === id ? { ...tree, ...patch, id: tree.id } : tree);
 }
+
