@@ -34,3 +34,4 @@ const LABELS = {
 export default function StatusPill({ status }) {
   return <span className={`status-pill status-${status}`}>{LABELS[status] || status}</span>;
 }
+

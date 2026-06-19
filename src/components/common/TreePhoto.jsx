@@ -1,17 +1,13 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 export default function TreePhoto({ src, alt, className = "", caption, overlay, children }) {
   const [failed, setFailed] = useState(false);
-  const safeAlt = alt || "Tree image";
-
-  useEffect(() => setFailed(false), [src]);
-
   return (
     <div className={`tree-photo ${className} ${failed ? "tree-photo-failed" : ""}`}>
       {!failed && src ? (
-        <img src={src} alt={safeAlt} loading="lazy" onError={() => setFailed(true)} />
+        <img src={src} alt={alt} loading="lazy" onError={() => setFailed(true)} />
       ) : (
-        <div className="tree-photo-fallback" aria-label={safeAlt} role="img">
+        <div className="tree-photo-fallback" aria-label={alt} role="img">
           <span />
         </div>
       )}
@@ -21,3 +17,4 @@ export default function TreePhoto({ src, alt, className = "", caption, overlay, 
     </div>
   );
 }
+
