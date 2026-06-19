@@ -42,9 +42,9 @@ export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, sh
         </Card>
         <Card title="Quick Actions" subtitle="Demo shortcuts for the IT Support workflow">
           <div className="it-action-grid">
-            <button className="button" onClick={() => onNavigate("audit")}>Review Audit</button>
-            <button className="button button-outline" onClick={() => onNavigate("it-tickets")}>Open Tickets</button>
-            <button className="button button-outline" onClick={() => onNavigate("it-monitoring")}>Check Services</button>
+            <button className="button" onClick={() => showToast("Audit review is available from Subsystem 4.")}>Review Audit</button>
+            <button className="button button-outline" onClick={() => onNavigate("incident-tickets")}>Open Tickets</button>
+            <button className="button button-outline" onClick={() => onNavigate("system-monitoring")}>Check Services</button>
             <button className="button button-outline" onClick={() => showToast("Demo diagnostic queued for IT Support review.")}>Run Diagnostic</button>
           </div>
         </Card>
