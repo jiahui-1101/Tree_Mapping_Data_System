@@ -10,6 +10,7 @@ import VisitorHeatmapPanel from "./VisitorHeatmapPanel.jsx";
 import ZoneInventorySummary from "./ZoneInventorySummary.jsx";
 import StakeholderDetailsPanel from "./StakeholderDetailsPanel.jsx";
 import TreeMapDetailsModal from "./TreeMapDetailsModal.jsx";
+import MapLegend from "./MapLegend.jsx";
 
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
   const [layer, setLayer] = useState(DEFAULT_MAP_LAYER);
@@ -41,7 +42,7 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
       )}
       <ZoneInventorySummary trees={trees} />
       <StakeholderDetailsPanel selectedPlot={selectedPlot} selectedZone={selectedZone} />
-      <div className="two-column map-stats"><Card title="Layer Legend"><p><span className="legend-dot green" /> Healthy tree</p><p><span className="legend-dot amber" /> Monitor tree</p><p><span className="legend-dot red" /> Critical tree</p><p><span className="legend-dot blue" /> Aggregated visitor activity</p></Card><Card title="Official Arboretum Collections"><p>Plot Aroma · Plot Buluh · Plot Palma · Plot Nama Tempat · Plot Ethnobotani · Plot Herba dan Perubatan</p></Card></div>
+      <MapLegend />
       <TreeMapDetailsModal tree={selected} onClose={() => setSelected(null)} onOpenScanner={onOpenScanner} />
     </>
   );
