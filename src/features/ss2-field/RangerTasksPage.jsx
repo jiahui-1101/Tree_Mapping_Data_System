@@ -51,3 +51,4 @@ export default function RangerTasksPage({ user, tasks, onUpdateTask, onOpenScann
     </>
   );
 }
+
