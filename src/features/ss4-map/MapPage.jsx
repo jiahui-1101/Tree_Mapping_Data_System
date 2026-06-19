@@ -4,17 +4,10 @@ import GardenMap from "../../components/map/GardenMap.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { MAP_ZONES, TBJ_GOOGLE_MAPS_URL, TBJ_MAP_FACTS, TBJ_OFFICIAL_CONTEXT, TBJ_OFFICIAL_SOURCE_URL, TBJ_STAKEHOLDER_PLOTS, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotsByZone, getStakeholderSourceGroup } from "../../data/gardenMap.js";
-
-const MAP_LAYERS = [
-  { id: "health", label: "health" },
-  { id: "tasks", label: "tasks" },
-  { id: "stakeholder", label: "stakeholder plots" },
-  { id: "collections", label: "plant collections" },
-  { id: "visitors", label: "visitor activity" },
-];
+import { DEFAULT_MAP_LAYER, MAP_LAYERS } from "../../config/mapLayers.js";
 
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
-  const [layer, setLayer] = useState("health");
+  const [layer, setLayer] = useState(DEFAULT_MAP_LAYER);
   const [selected, setSelected] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
   const [selectedPlot, setSelectedPlot] = useState(null);
