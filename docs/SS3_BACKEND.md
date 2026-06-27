@@ -175,3 +175,17 @@ GET /api/visitor/integrations/ss4/qr-scan-events
 
 Returns SS3 visitor scan records in an SS4-compatible `QRScanEvents` shape:
 
+```json
+{
+  "scanId": "VSE-001",
+  "qrId": "QR-TBJ-002",
+  "treeId": "TBJ-002",
+  "actorId": "visitor-session-id",
+  "roleDetected": "Visitor",
+  "routedTo": "SS3-M3-A Tree ID Card",
+  "scanResult": "success",
+  "scannedAt": "2026-06-28T..."
+}
+```
+
+This keeps SS3 integrated with the SS4 scan-event model without modifying SS4 source files. A production SS4 service can consume this endpoint or replace it with a shared database view.
