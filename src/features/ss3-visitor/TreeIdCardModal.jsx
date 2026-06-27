@@ -64,3 +64,91 @@ export default function TreeIdCardModal({ tree, language, onClose, onCollect }) 
             <p>{profile.description}</p>
             <div className="profile-badge-row">
               {profile.badges.map((badge) => <span key={badge}>{badge}</span>)}
+            </div>
+          </div>
+        </section>
+
+        <div className="tree-id-meta-grid">
+          <article><span>{t("profiles.localName")}</span><strong>{profile.localName}</strong></article>
+          <article><span>{t("profiles.zone")}</span><strong>{profile.zone}</strong></article>
+          <article><span>{t("profiles.height")}</span><strong>{profile.height} m</strong></article>
+          <article><span>{t("profiles.age")}</span><strong>{profile.age} {t("profiles.years")}</strong></article>
+        </div>
+
+        <div className="segmented segmented-premium">
+          <button className={mode === "explorer" ? "active" : ""} onClick={() => setMode("explorer")}>{t("profiles.explorer")}</button>
+          <button className={mode === "expert" ? "active" : ""} onClick={() => setMode("expert")}>{t("profiles.expert")}</button>
+        </div>
+
+        {mode === "explorer" ? (
+          <div className="profile-story-grid">
+            <article>
+              <span>{t("profiles.whereToSee")}</span>
+              <p>{profile.zoneContext}</p>
+            </article>
+            <article>
+              <span>{t("profiles.lookFor")}</span>
+              <p>{profile.seasonalInterest}</p>
+            </article>
+            <article>
+              <span>{t("profiles.gardenStory")}</span>
+              <p>{profile.culturalUse}</p>
+            </article>
+            <article>
+              <span>{t("profiles.funFact")}</span>
+              <p>{profile.visitorFact}</p>
+            </article>
+          </div>
+        ) : (
+          <div className="expert-data premium-expert">
+            <p><strong>{t("profiles.taxonomy")}:</strong> Plantae · Angiosperms · {profile.family}</p>
+            <p><strong>{t("profiles.origin")}:</strong> {profile.origin}</p>
+            <p><strong>{t("profiles.morphology")}:</strong> {profile.morphology}</p>
+            <p><strong>{t("profiles.ecologyRole")}:</strong> {profile.ecologyRole}</p>
+            <p><strong>{t("profiles.conservation")}:</strong> {profile.conservationNote}</p>
+          </div>
+        )}
+
+        <section className="growth-simulator-premium">
+          <div className="growth-copy">
+            <span className="premium-eyebrow">{t("profiles.aiSimulator")}</span>
+            <h3>{t("profiles.futureCanopy")} · {growth}{t("profiles.yearSuffix")}</h3>
+            <p>{t("profiles.simulatorNote")}</p>
+          </div>
+          <div className="growth-stage-layout">
+            <GrowthVisual profile={profile} projection={projection} confidence={confidence} t={t} />
+            <div className="growth-stage-panel">
+              <div className="growth-panel-header">
+                <span className="field-label">{t("profiles.simulation", { years: growth })}</span>
+                <b>{t("profiles.ecologyForecast")}</b>
+              </div>
+              <input
+                className="growth-slider"
+                aria-label={t("profiles.aiSimulator")}
+                type="range"
+                min="0"
+                max={GROWTH_YEARS.length - 1}
+                value={GROWTH_YEARS.indexOf(growth)}
+                onChange={(event) => setGrowth(GROWTH_YEARS[Number(event.target.value)])}
+              />
+              <div className="growth-year-row growth-year-ticks">
+                {GROWTH_YEARS.map((year) => <button key={year} className={growth === year ? "active" : ""} onClick={() => setGrowth(year)}>{year}{t("profiles.yearSuffix")}</button>)}
+              </div>
+              <div className="simulator-output simulator-output-grid">
+                <span style={{ "--metric-level": `${Math.min(100, projection.height * 2.1)}%` }}>{t("profiles.projectedShort")}<strong>{projection.height} m</strong></span>
+                <span style={{ "--metric-level": `${Math.min(100, projection.canopy * 2.8)}%` }}>{t("profiles.canopyWidth")}<strong>{projection.canopy} m</strong></span>
+                <span style={{ "--metric-level": `${Math.min(100, projection.root * 4)}%` }}>{t("profiles.rootRadius")}<strong>{projection.root} m</strong></span>
+                <span style={{ "--metric-level": `${confidence}%` }}>{t("profiles.modelConfidence")}<strong>{confidence}%</strong></span>
+              </div>
+              <p className="growth-milestone">{projection.milestone}</p>
+            </div>
+          </div>
+        </section>
+
+        <button className="button button-block" onClick={() => onCollect?.(tree)}>{t("profiles.collect")}</button>
+        <p className="public-data-note">{t("profiles.demoNotice")}</p>
+        </div>
+    </Modal>
+  );
+}
+
