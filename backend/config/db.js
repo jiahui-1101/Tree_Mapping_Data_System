@@ -23,7 +23,7 @@ export const databaseConfig = {
   port: Number(process.env.DB_PORT || 3306),
   user: process.env.DB_USER || "root",
   password: process.env.DB_PASSWORD || "",
-  database: process.env.DB_NAME || "tree_mapping_m1c",
+  database: process.env.DB_NAME || "tree_mapping_data_system",
   waitForConnections: true,
   connectionLimit: Number(process.env.DB_CONNECTION_LIMIT || 10),
 };

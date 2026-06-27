@@ -1,7 +1,8 @@
-CREATE DATABASE IF NOT EXISTS tree_mapping_m1c;
-USE tree_mapping_m1c;
+CREATE DATABASE IF NOT EXISTS tree_mapping_data_system;
+USE tree_mapping_data_system;
 
-CREATE TABLE IF NOT EXISTS predictive_alerts (
+-- SS1 M1-C Predictive Maintenance Scheduler
+CREATE TABLE IF NOT EXISTS ss1_predictive_alerts (
   id VARCHAR(20) PRIMARY KEY,
   tree_id VARCHAR(20) NOT NULL,
   title VARCHAR(120) NOT NULL,
@@ -16,7 +17,7 @@ CREATE TABLE IF NOT EXISTS predictive_alerts (
   UNIQUE KEY unique_tree_alert (tree_id, title)
 );
 
-CREATE TABLE IF NOT EXISTS maintenance_tasks (
+CREATE TABLE IF NOT EXISTS ss1_maintenance_tasks (
   id VARCHAR(20) PRIMARY KEY,
   alert_id VARCHAR(20) NULL,
   title VARCHAR(160) NOT NULL,
@@ -27,12 +28,12 @@ CREATE TABLE IF NOT EXISTS maintenance_tasks (
   status ENUM('pending', 'in-progress', 'completed') NOT NULL DEFAULT 'pending',
   notes TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  CONSTRAINT fk_maintenance_tasks_alert
-    FOREIGN KEY (alert_id) REFERENCES predictive_alerts(id)
+  CONSTRAINT fk_ss1_maintenance_tasks_alert
+    FOREIGN KEY (alert_id) REFERENCES ss1_predictive_alerts(id)
     ON DELETE SET NULL
 );
 
-INSERT INTO predictive_alerts
+INSERT INTO ss1_predictive_alerts
   (id, tree_id, title, zone, confidence, action_window, status, detail, generated_by)
 VALUES
   ('ALT-001', 'TBJ-004', 'Fungal infection outbreak', 'Tanaman', 92, 'Within 24 hours', 'pending', 'High humidity and recent leaf reports indicate spreading infection.', 'seed data'),
@@ -43,7 +44,7 @@ ON DUPLICATE KEY UPDATE
   action_window = VALUES(action_window),
   detail = VALUES(detail);
 
-INSERT INTO maintenance_tasks
+INSERT INTO ss1_maintenance_tasks
   (id, alert_id, title, tree_id, ranger, source, priority, status, notes)
 VALUES
   ('TSK-087', NULL, 'Investigate diseased tree', 'TBJ-004', 'Ahmad Razif', 'AI Diagnosis', 'urgent', 'pending', 'Suspected fungal infection. Capture a leaf close-up.'),
@@ -53,3 +54,9 @@ VALUES
 ON DUPLICATE KEY UPDATE
   status = VALUES(status),
   notes = VALUES(notes);
+
+-- Other subsystem teams can add shared tables here using clear prefixes:
+-- ss2_... for Scheduling and Field Task Management
+-- ss3_... for Visitor Engagement
+-- ss4_... for Map, QR, and Spatial Planning
+-- it_...  for IT Support Operations

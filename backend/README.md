@@ -4,6 +4,8 @@ This backend supports SS1 Module M1-C: Predictive Maintenance Scheduler.
 
 It runs inside the shared Tree Mapping backend server. By default it can run with in-memory data for quick testing. For a complete backend demo, set `BACKEND_STORE=mysql` and run it with the MySQL schema in `database/schema.sql`.
 
+The shared MySQL database is `tree_mapping_data_system`. This module uses `ss1_` table prefixes so other subsystem teams can add their own tables without conflicts.
+
 The AI prediction is simulated with rule-based backend logic using tree health score and status. A real AI service can be connected later by replacing the generate-alert logic.
 
 ## Run
@@ -41,6 +43,13 @@ npm run backend
 ```
 
 If `.env` contains `BACKEND_STORE=mysql`, the API will use MySQL. Otherwise, it falls back to memory mode.
+
+Current SS1 tables:
+
+```text
+ss1_predictive_alerts
+ss1_maintenance_tasks
+```
 
 ## Endpoints
 

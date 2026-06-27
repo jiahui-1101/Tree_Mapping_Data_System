@@ -37,7 +37,7 @@ function rowToTask(row) {
 }
 
 async function nextAlertId(connection) {
-  const [rows] = await connection.query("SELECT id FROM predictive_alerts ORDER BY id DESC");
+  const [rows] = await connection.query("SELECT id FROM ss1_predictive_alerts ORDER BY id DESC");
   const max = rows.reduce((highest, row) => {
     const value = Number(String(row.id).match(/ALT-(\d+)/)?.[1] || 0);
     return Math.max(highest, value);
@@ -85,7 +85,7 @@ function buildRuleBasedAlert(tree, id) {
 
 async function insertAlert(connection, alert) {
   await connection.execute(
-    `INSERT INTO predictive_alerts
+    `INSERT INTO ss1_predictive_alerts
       (id, tree_id, title, zone, confidence, action_window, status, detail, generated_by)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [alert.id, alert.treeId, alert.title, alert.zone, alert.confidence, alert.window, alert.status, alert.detail, alert.generatedBy || "seed data"]
@@ -94,7 +94,7 @@ async function insertAlert(connection, alert) {
 
 async function insertTask(connection, task) {
   await connection.execute(
-    `INSERT INTO maintenance_tasks
+    `INSERT INTO ss1_maintenance_tasks
       (id, alert_id, title, tree_id, ranger, source, priority, status, notes)
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [task.id, task.alertId || null, task.title, task.treeId, task.ranger, task.source, task.priority, task.status, task.notes]
@@ -106,17 +106,17 @@ export async function health() {
 }
 
 export async function listAlerts() {
-  const [rows] = await pool.query("SELECT * FROM predictive_alerts ORDER BY created_at DESC, id DESC");
+  const [rows] = await pool.query("SELECT * FROM ss1_predictive_alerts ORDER BY created_at DESC, id DESC");
   return rows.map(rowToAlert);
 }
 
 export async function findAlert(id) {
-  const [rows] = await pool.execute("SELECT * FROM predictive_alerts WHERE id = ?", [id]);
+  const [rows] = await pool.execute("SELECT * FROM ss1_predictive_alerts WHERE id = ?", [id]);
   return rows[0] ? rowToAlert(rows[0]) : null;
 }
 
 export async function listTasks() {
-  const [rows] = await pool.query("SELECT * FROM maintenance_tasks ORDER BY created_at DESC, id DESC");
+  const [rows] = await pool.query("SELECT * FROM ss1_maintenance_tasks ORDER BY created_at DESC, id DESC");
   return rows.map(rowToTask);
 }
 
@@ -128,7 +128,7 @@ export async function updateAlertStatus(id, status) {
   }
 
   const [result] = await pool.execute(
-    "UPDATE predictive_alerts SET status = ? WHERE id = ?",
+    "UPDATE ss1_predictive_alerts SET status = ? WHERE id = ?",
     [status, id]
   );
   if (!result.affectedRows) {
@@ -143,7 +143,7 @@ export async function approveAlert(id, ranger = "Ahmad Razif") {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [alertRows] = await connection.execute("SELECT * FROM predictive_alerts WHERE id = ? FOR UPDATE", [id]);
+    const [alertRows] = await connection.execute("SELECT * FROM ss1_predictive_alerts WHERE id = ? FOR UPDATE", [id]);
     if (!alertRows[0]) {
       const error = new Error("Predictive alert not found.");
       error.statusCode = 404;
@@ -151,15 +151,15 @@ export async function approveAlert(id, ranger = "Ahmad Razif") {
     }
 
     const alert = rowToAlert(alertRows[0]);
-    await connection.execute("UPDATE predictive_alerts SET status = 'approved' WHERE id = ?", [id]);
+    await connection.execute("UPDATE ss1_predictive_alerts SET status = 'approved' WHERE id = ?", [id]);
 
-    const [existingTasks] = await connection.execute("SELECT * FROM maintenance_tasks WHERE alert_id = ? LIMIT 1", [id]);
+    const [existingTasks] = await connection.execute("SELECT * FROM ss1_maintenance_tasks WHERE alert_id = ? LIMIT 1", [id]);
     if (existingTasks[0]) {
       await connection.commit();
       return { alert: { ...alert, status: "approved" }, task: rowToTask(existingTasks[0]) };
     }
 
-    const [taskRows] = await connection.query("SELECT * FROM maintenance_tasks");
+    const [taskRows] = await connection.query("SELECT * FROM ss1_maintenance_tasks");
     const task = {
       ...buildMaintenanceTask(alert, ranger, taskRows.map(rowToTask)),
       alertId: id,
@@ -180,7 +180,7 @@ export async function generateAlertsFromTrees() {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    const [existingRows] = await connection.query("SELECT tree_id, title FROM predictive_alerts");
+    const [existingRows] = await connection.query("SELECT tree_id, title FROM ss1_predictive_alerts");
     const existingKeys = new Set(existingRows.map((row) => `${row.tree_id}:${row.title}`));
     const generated = [];
 
@@ -207,8 +207,8 @@ export async function resetStore() {
   const connection = await pool.getConnection();
   try {
     await connection.beginTransaction();
-    await connection.query("DELETE FROM maintenance_tasks");
-    await connection.query("DELETE FROM predictive_alerts");
+    await connection.query("DELETE FROM ss1_maintenance_tasks");
+    await connection.query("DELETE FROM ss1_predictive_alerts");
     for (const alert of MAINTENANCE_ALERTS) {
       await insertAlert(connection, { ...alert, generatedBy: "seed data" });
     }
