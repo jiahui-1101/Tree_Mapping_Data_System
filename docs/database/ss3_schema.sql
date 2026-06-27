@@ -26,3 +26,14 @@ CREATE TABLE IF NOT EXISTS tree_public_profiles (
 );
 
 CREATE TABLE IF NOT EXISTS visitor_collections (
+  collection_id VARCHAR(30) PRIMARY KEY,
+  session_id VARCHAR(80) NOT NULL REFERENCES visitor_sessions(session_id),
+  tree_id VARCHAR(20) NOT NULL,
+  source VARCHAR(30) NOT NULL DEFAULT 'qr',
+  collected_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE (session_id, tree_id)
+);
+
+CREATE TABLE IF NOT EXISTS visitor_scan_events (
+  scan_id VARCHAR(30) PRIMARY KEY,
+  session_id VARCHAR(80) NOT NULL REFERENCES visitor_sessions(session_id),
