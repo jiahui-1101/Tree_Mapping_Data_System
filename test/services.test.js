@@ -306,3 +306,63 @@ test("all visitor profiles use stable local photos with localized alt text", () 
   for (const tree of TREES) {
     const enProfile = getPublicTreeCard(tree, "en");
     const bmProfile = getPublicTreeCard(tree, "bm");
+    const zhProfile = getPublicTreeCard(tree, "zh");
+    assert.ok(enProfile.photoUrl.includes("visitor-trees"));
+    assert.ok(enProfile.photoUrl.endsWith(".jpg"));
+    assert.equal(existsSync(fileURLToPath(enProfile.photoUrl)), true);
+    assert.ok(enProfile.photoSourceUrl.startsWith("https://commons.wikimedia.org/wiki/File:"));
+    assert.ok(enProfile.photoCredit.length > 0);
+    assert.notEqual(enProfile.photoAlt, bmProfile.photoAlt);
+    assert.notEqual(enProfile.photoAlt, zhProfile.photoAlt);
+  }
+});
+
+test("growth simulation produces distinct visual model values", () => {
+  const profile = getPublicTreeCard(TREES.find((tree) => tree.id === "TBJ-001"), "en");
+  const year5 = projectGrowth(profile, 5);
+  const year50 = projectGrowth(profile, 50);
+  assert.ok(year50.height > year5.height);
+  assert.ok(year50.canopy > year5.canopy);
+  assert.ok(year50.root > year5.root);
+  assert.notEqual(year5.milestone, year50.milestone);
+});
+
+test("SS3 backend returns visitor-safe digital tree ID cards", async () => {
+  await resetVisitorBackendState();
+  const result = getVisitorTreeIdCard("TBJ-005", { language: "zh", growthYears: 25 });
+  assert.equal(result.ok, true);
+  assert.equal(result.tree.health, undefined);
+  assert.equal(result.tree.status, undefined);
+  assert.equal(result.tree.x, undefined);
+  assert.equal(result.tree.y, undefined);
+  assert.equal(result.privacy.operationalHealthHidden, true);
+  assert.equal(result.privacy.protectedCoordinatesMasked, true);
+  assert.equal(result.growthSimulation.years, 25);
+  assert.ok(result.growthSimulation.height > 0);
+});
+
+test("SS3 backend validates route preferences and provides AI fallback route", async () => {
+  const missing = await recommendVisitorRoute({ preferences: [], language: "bm" });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.status, 400);
+  assert.match(missing.message, /sekurang-kurangnya/i);
+
+  const route = await recommendVisitorRoute({ preferences: ["rare", "ancient"], duration: 90, language: "en", aiAvailable: false });
+  assert.equal(route.ok, true);
+  assert.equal(route.fallback, true);
+  assert.equal(route.estimatedDuration, 90);
+  assert.ok(route.stops.length > 0);
+  assert.ok(route.stops.every((stop) => stop.health === undefined && stop.status === undefined));
+});
+
+test("SS3 backend chatbot is multilingual and hides sensitive operations", async () => {
+  const reply = await answerVisitorChat({ question: "为什么隐藏珍稀物种位置？", language: "zh" });
+  assert.equal(reply.ok, true);
+  assert.equal(reply.intent, "rare_species_privacy");
+  assert.equal(reply.provider, "Local rule engine");
+  assert.equal(reply.safety.rareSpeciesCoordinatesHidden, true);
+  assert.match(reply.answer, /珍稀物种/);
+});
+
+test("SS3 backend collection and scan analytics support visitor discovery tracking", async () => {
+  await resetVisitorBackendState();
