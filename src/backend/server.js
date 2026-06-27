@@ -79,3 +79,15 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
   }));
 
   app.post("/api/visitor/chat", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["question"])) return;
+    sendResult(response, await backend.answerVisitorChat({
+      ...request.body,
+      sessionId: sessionId(request),
+    }));
+  }));
+
+  app.get("/api/visitor/collection", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.getVisitorCollection({
+      sessionId: sessionId(request),
+      language: request.query.language,
+    }));
