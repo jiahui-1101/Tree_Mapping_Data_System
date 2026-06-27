@@ -69,3 +69,52 @@ function normalizeSessionId(sessionId) {
 function publicTreePayload(tree, language) {
   const maskedTree = maskTreeForRole(tree, ROLE.VISITOR);
   return getPublicTreeCard(maskedTree, language);
+}
+
+function buildCollectionSummary(treeIds, language) {
+  const collectedTrees = TREES.filter((tree) => treeIds.includes(tree.id));
+  const zonesDiscovered = new Set(collectedTrees.map((tree) => tree.zone)).size;
+  return {
+    totalCollected: collectedTrees.length,
+    totalAvailable: TREES.length,
+    zonesDiscovered,
+    containsRare: collectedTrees.some((tree) => tree.rare),
+    progressPercent: Math.round((collectedTrees.length / TREES.length) * 100),
+    badges: collectedTrees.map((tree) => publicTreePayload(tree, language)),
+  };
+}
+
+function fallbackChatAnswer(language, question) {
+  const normalized = String(question || "").toLowerCase();
+  const intent = CHAT_INTENTS.find((candidate) => candidate.keywords.some((keyword) => normalized.includes(keyword)));
+  return {
+    intent: intent?.id || "tree_learning",
+    answer: intent?.replies[language] || visitorText(language, "chat.meranti"),
+  };
+}
+
+function buildFallbackRoute(duration, language) {
+  const route = buildVisitorRoute(["ancient", "shaded"], TREES);
+  return {
+    ...route,
+    estimatedDuration: duration,
+    fallback: true,
+    notice: {
+      en: "Showing a recommended popular route based on common preferences.",
+      bm: "Memaparkan laluan popular berdasarkan minat umum.",
+      zh: "正在显示基于常见兴趣的推荐路线。",
+    }[language],
+  };
+}
+
+function visitorRoutePayload(routeResult, selectedPreferences, visitDuration, language, storedRoute = {}) {
+  const safeStops = routeResult.route.map((tree) => publicTreePayload(tree, language));
+  return {
+    ok: true,
+    routeId: storedRoute.routeId || "",
+    preferences: selectedPreferences,
+    estimatedDuration: visitDuration,
+    totalDistance: routeResult.totalDistance,
+    fallback: Boolean(routeResult.fallback),
+    notice: routeResult.notice || "",
+    stops: safeStops,
