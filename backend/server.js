@@ -4,11 +4,13 @@ import {
   approveAlert,
   findAlert,
   generateAlertsFromTrees,
+  health,
   listAlerts,
   listTasks,
   resetStore,
+  storeMode,
   updateAlertStatus,
-} from "./maintenanceStore.js";
+} from "./repository.js";
 
 const PORT = Number(process.env.PORT || 4001);
 
@@ -51,42 +53,47 @@ async function handleRequest(request, response) {
   const pathParts = url.pathname.split("/").filter(Boolean);
 
   if (request.method === "GET" && url.pathname === "/api/health") {
-    return sendJson(response, 200, { ok: true, service: "M1-C Predictive Maintenance Backend" });
+    return sendJson(response, 200, {
+      ok: true,
+      service: "M1-C Predictive Maintenance Backend",
+      store: storeMode,
+      database: await health(),
+    });
   }
 
   if (request.method === "GET" && url.pathname === "/api/predictive-alerts") {
-    return sendJson(response, 200, { data: listAlerts() });
+    return sendJson(response, 200, { data: await listAlerts() });
   }
 
   if (request.method === "GET" && pathParts[0] === "api" && pathParts[1] === "predictive-alerts" && pathParts[2]) {
-    const alert = findAlert(pathParts[2]);
+    const alert = await findAlert(pathParts[2]);
     if (!alert) return sendJson(response, 404, { error: "Predictive alert not found." });
     return sendJson(response, 200, { data: alert });
   }
 
   if (request.method === "POST" && url.pathname === "/api/predictive-alerts/generate") {
-    const generated = generateAlertsFromTrees();
+    const generated = await generateAlertsFromTrees();
     return sendJson(response, 201, { data: generated, count: generated.length });
   }
 
   if (request.method === "PATCH" && pathParts[0] === "api" && pathParts[1] === "predictive-alerts" && pathParts[2] && pathParts[3] === "status") {
     const body = await readBody(request);
-    const alert = updateAlertStatus(pathParts[2], body.status);
+    const alert = await updateAlertStatus(pathParts[2], body.status);
     return sendJson(response, 200, { data: alert });
   }
 
   if (request.method === "POST" && pathParts[0] === "api" && pathParts[1] === "predictive-alerts" && pathParts[2] && pathParts[3] === "approve") {
     const body = await readBody(request);
-    const result = approveAlert(pathParts[2], body.ranger || "Ahmad Razif");
+    const result = await approveAlert(pathParts[2], body.ranger || "Ahmad Razif");
     return sendJson(response, 201, { data: result });
   }
 
   if (request.method === "GET" && url.pathname === "/api/tasks") {
-    return sendJson(response, 200, { data: listTasks() });
+    return sendJson(response, 200, { data: await listTasks() });
   }
 
   if (request.method === "POST" && url.pathname === "/api/dev/reset") {
-    return sendJson(response, 200, { data: resetStore() });
+    return sendJson(response, 200, { data: await resetStore() });
   }
 
   return sendJson(response, 404, { error: "Route not found." });
