@@ -52,6 +52,21 @@ async function handleRequest(request, response) {
   const url = new URL(request.url, `http://${request.headers.host}`);
   const pathParts = url.pathname.split("/").filter(Boolean);
 
+  if (request.method === "GET" && url.pathname === "/") {
+    return sendJson(response, 200, {
+      service: "M1-C Predictive Maintenance Backend",
+      message: "Backend is running. Use the API endpoints below for demo.",
+      store: storeMode,
+      endpoints: {
+        health: "/api/health",
+        predictiveAlerts: "/api/predictive-alerts",
+        tasks: "/api/tasks",
+        generateAlerts: "POST /api/predictive-alerts/generate",
+        approveAlert: "POST /api/predictive-alerts/ALT-001/approve",
+      },
+    });
+  }
+
   if (request.method === "GET" && url.pathname === "/api/health") {
     return sendJson(response, 200, {
       ok: true,
