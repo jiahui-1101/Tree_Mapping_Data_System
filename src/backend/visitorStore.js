@@ -63,3 +63,19 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
       await ensureLoaded();
       const current = new Set(state.collections[sessionId] || []);
       const isNew = !current.has(treeId);
+      current.add(treeId);
+      state.collections[sessionId] = [...current];
+      await save();
+      return { treeIds: state.collections[sessionId], isNew };
+    },
+
+    async recordScan(event) {
+      await ensureLoaded();
+      const stored = {
+        scanId: nextId("VSE", state.scans, "scanId"),
+        ...event,
+        scannedAt: event.scannedAt || new Date().toISOString(),
+      };
+      state.scans.unshift(stored);
+      await save();
+      return stored;
