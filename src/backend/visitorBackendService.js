@@ -270,7 +270,9 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
       const normalizedSessionId = normalizeSessionId(sessionId);
       const event = await store.recordScan({
         sessionId: normalizedSessionId,
+        qrId: `QR-${tree.id}`,
         treeId: tree.id,
+        actorId: normalizedSessionId,
         zone: tree.zone,
         source,
         roleDetected: "Visitor",
@@ -283,24 +285,3 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
         event,
         tree: publicTreePayload(tree, selectedLanguage),
         collection: buildCollectionSummary(collection.treeIds, selectedLanguage),
-      };
-    },
-
-    async getVisitorAnalytics() {
-      const analytics = await store.getAnalytics();
-      return { ok: true, ...analytics };
-    },
-  };
-}
-
-const defaultBackend = createVisitorBackend();
-
-export const resetVisitorBackendState = (...args) => defaultBackend.resetVisitorBackendState(...args);
-export const listVisitorTreeProfiles = (...args) => defaultBackend.listVisitorTreeProfiles(...args);
-export const getVisitorTreeIdCard = (...args) => defaultBackend.getVisitorTreeIdCard(...args);
-export const recommendVisitorRoute = (...args) => defaultBackend.recommendVisitorRoute(...args);
-export const answerVisitorChat = (...args) => defaultBackend.answerVisitorChat(...args);
-export const addTreeToVisitorCollection = (...args) => defaultBackend.addTreeToVisitorCollection(...args);
-export const getVisitorCollection = (...args) => defaultBackend.getVisitorCollection(...args);
-export const recordVisitorScan = (...args) => defaultBackend.recordVisitorScan(...args);
-export const getVisitorAnalytics = (...args) => defaultBackend.getVisitorAnalytics(...args);
