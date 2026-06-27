@@ -99,3 +99,29 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
       sessionId: sessionId(request),
       treeId: request.body.treeId,
       language: request.body.language,
+    }));
+  }));
+
+  app.post("/api/visitor/scans", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["treeId"])) return;
+    sendResult(response, await backend.recordVisitorScan({
+      sessionId: sessionId(request),
+      treeId: request.body.treeId,
+      language: request.body.language,
+      source: request.body.source,
+    }));
+  }));
+
+  app.get("/api/visitor/analytics/scans", asyncRoute(async (_request, response) => {
+    response.json(await backend.getVisitorAnalytics());
+  }));
+
+  app.get("/api/visitor/integrations/ss4/qr-scan-events", asyncRoute(async (_request, response) => {
+    response.json(await backend.getSs4QrScanEvents());
+  }));
+
+  app.use((request, response) => {
+    response.status(404).json({ ok: false, error: "NOT_FOUND", message: `No backend route for ${request.method} ${request.path}` });
+  });
+
+  app.use((error, _request, response, _next) => {
