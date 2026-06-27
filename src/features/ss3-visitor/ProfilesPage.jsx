@@ -20,3 +20,16 @@ export default function ProfilesPage({ trees, language, onCollect }) {
   return (
     <VisitorPageShell className="profiles-premium">
       <VisitorSectionHeader
+        className="visitor-section-heading"
+        eyebrow={t("profiles.herbarium")}
+        title={t("page.profiles")[0]}
+        subtitle={t("profiles.herbariumSubtitle")}
+      />
+      <div className="profile-grid premium-profile-grid">{profiles.map((profile) => {
+        const tree = trees.find((item) => item.id === profile.id) || profile;
+        return (
+          <VisitorPhotoCard
+            key={profile.id}
+            onClick={() => setSelected(tree)}
+            photo={<TreePhoto src={profile.photoUrl} alt={profile.photoAlt} className="profile-card-photo" />}
+            eyebrow={profile.zone}
