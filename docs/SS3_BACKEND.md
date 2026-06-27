@@ -32,3 +32,33 @@ PORT=4174
 SS3_VISITOR_STORE_PATH=.runtime/ss3-visitor-store.json
 SS3_AI_PROVIDER=mock
 SS3_AI_TIMEOUT_MS=8000
+GEMINI_API_KEY=
+OPENAI_API_KEY=
+```
+
+`SS3_AI_PROVIDER` supports:
+
+- `mock`: local rule-based backend for coursework demo reliability
+- `gemini`: Gemini API call with fallback to local rules
+- `openai`: OpenAI chat completion call with fallback to local rules
+
+The fallback path is intentional so the demo remains usable when there is no API key or network.
+
+## Persistence
+
+Visitor collection, QR scan analytics, chat logs, and route plans are stored in a JSON file through `visitorStore.js`.
+
+Default path:
+
+```text
+.runtime/ss3-visitor-store.json
+```
+
+The `.runtime/` folder is ignored by Git because it contains local runtime data.
+
+## API Summary
+
+### Health
+
+```http
+GET /api/health
