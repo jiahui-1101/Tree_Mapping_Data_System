@@ -295,3 +295,26 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
 
     async getSs4QrScanEvents() {
       const analytics = await store.getAnalytics();
+      return {
+        ok: true,
+        sourceSubsystem: "SS3",
+        targetModel: "SS4.QRScanEvents",
+        events: analytics.events.map((event) => ({
+          scanId: event.scanId,
+          qrId: event.qrId || `QR-${event.treeId}`,
+          treeId: event.treeId,
+          actorId: event.actorId || event.sessionId,
+          roleDetected: event.roleDetected || "Visitor",
+          routedTo: event.routedTo || "SS3-M3-A Tree ID Card",
+          scanResult: event.scanResult || "success",
+          scannedAt: event.scannedAt,
+        })),
+      };
+    },
+  };
+}
+
+const defaultBackend = createVisitorBackend();
+
+export const resetVisitorBackendState = (...args) => defaultBackend.resetVisitorBackendState(...args);
+export const listVisitorTreeProfiles = (...args) => defaultBackend.listVisitorTreeProfiles(...args);
