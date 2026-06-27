@@ -91,3 +91,11 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
       sessionId: sessionId(request),
       language: request.query.language,
     }));
+  }));
+
+  app.post("/api/visitor/collection", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["treeId"])) return;
+    sendResult(response, await backend.addTreeToVisitorCollection({
+      sessionId: sessionId(request),
+      treeId: request.body.treeId,
+      language: request.body.language,
