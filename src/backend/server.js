@@ -53,3 +53,18 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
         language: request.query.language,
         query: request.query.query,
         zone: request.query.zone,
+      }),
+    });
+  });
+
+  app.get("/api/visitor/trees/:treeId", (request, response) => {
+    if (!/^TBJ-\d{3}$/i.test(request.params.treeId)) {
+      return badRequest(response, "Tree ID must use the format TBJ-001.");
+    }
+    sendResult(response, backend.getVisitorTreeIdCard(request.params.treeId, {
+      language: request.query.language,
+      growthYears: request.query.growthYears,
+    }));
+  });
+
+  app.post("/api/visitor/routes/recommend", asyncRoute(async (request, response) => {
