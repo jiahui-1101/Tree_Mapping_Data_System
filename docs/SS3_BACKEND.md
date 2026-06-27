@@ -64,3 +64,24 @@ The production database design is documented in:
 docs/database/ss3_schema.sql
 ```
 
+The schema covers the SS3-owned entities from Progress 2:
+
+- `visitor_sessions`
+- `tree_public_profiles`
+- `visitor_collections`
+- `visitor_scan_events`
+- `visitor_route_plans`
+- `visitor_route_stops`
+- `visitor_chat_logs`
+
+The prototype keeps using JSON persistence so it can run without PostgreSQL, but the table names and fields are aligned with the backend API contracts.
+
+## Validation
+
+The Express API validates SS3 visitor requests before they reach the business service:
+
+- `treeId` path values must match `TBJ-001` style identifiers.
+- route preferences must be an array.
+- chat, collection, and scan writes require the relevant JSON body fields.
+- validation failures return `{ ok: false, error: "VALIDATION_ERROR" }`.
+
