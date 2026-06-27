@@ -152,3 +152,26 @@ POST /api/visitor/collection
 `POST` body:
 
 ```json
+{
+  "treeId": "TBJ-001",
+  "language": "en"
+}
+```
+
+### QR Scan Analytics
+
+```http
+POST /api/visitor/scans
+GET /api/visitor/analytics/scans
+```
+
+Scan records are aggregated by zone and tree to support SS4 heatmap integration.
+
+### SS4 QR Scan Event Bridge
+
+```http
+GET /api/visitor/integrations/ss4/qr-scan-events
+```
+
+Returns SS3 visitor scan records in an SS4-compatible `QRScanEvents` shape:
+
