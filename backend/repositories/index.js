@@ -1,4 +1,4 @@
-import * as memoryStore from "./maintenanceStore.js";
+import * as memoryStore from "./memoryMaintenanceRepository.js";
 import * as mysqlStore from "./mysqlMaintenanceRepository.js";
 
 const repository = process.env.BACKEND_STORE === "mysql" ? mysqlStore : memoryStore;

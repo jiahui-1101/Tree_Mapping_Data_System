@@ -3,4 +3,5 @@ dist/
 .vite/
 .npm-cache/
 *.log
+.env
 

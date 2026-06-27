@@ -2,7 +2,7 @@
 
 This backend supports SS1 Module M1-C: Predictive Maintenance Scheduler.
 
-It uses a lightweight Node.js HTTP server. By default it can run with in-memory data for quick testing. For a complete backend demo, set `BACKEND_STORE=mysql` and run it with the MySQL schema in `schema.sql`.
+It uses a lightweight Node.js HTTP server. By default it can run with in-memory data for quick testing. For a complete backend demo, set `BACKEND_STORE=mysql` and run it with the MySQL schema in `database/schema.sql`.
 
 The AI prediction is simulated with rule-based backend logic using tree health score and status. A real AI service can be connected later by replacing the generate-alert logic.
 
@@ -23,7 +23,7 @@ http://localhost:4001
 1. Create tables and seed records:
 
 ```powershell
-mysql -u root < backend/schema.sql
+mysql -u root < backend/database/schema.sql
 ```
 
 2. Copy environment template:
@@ -64,4 +64,4 @@ POST   /api/dev/reset
 
 ## Demo requests
 
-Use `backend/requests.http` in VS Code REST Client or Thunder Client.
+Use `backend/http/requests.http` in VS Code REST Client or Thunder Client.
