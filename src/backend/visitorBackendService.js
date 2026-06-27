@@ -204,3 +204,43 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
       }
       const fallback = fallbackChatAnswer(selectedLanguage, text);
       const aiResult = await askBotanicalAi({
+        question: text,
+        language: selectedLanguage,
+        safeContext: DEFAULT_GARDEN_CONTEXT,
+        config,
+      });
+      const answer = aiResult.answer || fallback.answer;
+      const provider = aiResult.answer ? aiResult.provider : "Local rule engine";
+      const chatLog = await store.recordChat({
+        sessionId: normalizeSessionId(sessionId),
+        language: selectedLanguage,
+        question: text,
+        answer,
+        intent: fallback.intent,
+        provider,
+        fallback: aiResult.fallback || !aiResult.answer,
+      });
+      return {
+        ok: true,
+        answer,
+        intent: fallback.intent,
+        provider,
+        fallback: chatLog.fallback,
+        chatId: chatLog.chatId,
+        safety: {
+          rareSpeciesCoordinatesHidden: true,
+          operationalHealthHidden: true,
+        },
+        suggestions: visitorText(selectedLanguage, "chat.suggestions"),
+      };
+    },
+
+    async addTreeToVisitorCollection({ sessionId, treeId, language = "en" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const tree = findTree(String(treeId || ""), TREES);
+      if (!tree) {
+        return { ok: false, status: 404, error: "TREE_NOT_FOUND", message: visitorText(selectedLanguage, "qr.invalid") };
+      }
+      const result = await store.addCollectionTree(normalizeSessionId(sessionId), tree.id);
+      return {
+        ok: true,
