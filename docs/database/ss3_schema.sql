@@ -56,3 +56,18 @@ CREATE TABLE IF NOT EXISTS visitor_route_plans (
   generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS visitor_route_stops (
+  route_id VARCHAR(30) NOT NULL REFERENCES visitor_route_plans(route_id),
+  tree_id VARCHAR(20) NOT NULL,
+  stop_order INT NOT NULL,
+  PRIMARY KEY (route_id, stop_order)
+);
+
+CREATE TABLE IF NOT EXISTS visitor_chat_logs (
+  chat_id VARCHAR(30) PRIMARY KEY,
+  session_id VARCHAR(80) NOT NULL REFERENCES visitor_sessions(session_id),
+  language VARCHAR(5) NOT NULL DEFAULT 'en',
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  intent VARCHAR(60) NOT NULL,
+  provider VARCHAR(60) NOT NULL,
