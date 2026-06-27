@@ -16,3 +16,13 @@ CREATE TABLE IF NOT EXISTS tree_public_profiles (
   family VARCHAR(120) NOT NULL,
   origin TEXT NOT NULL,
   morphology TEXT NOT NULL,
+  ecology_role TEXT NOT NULL,
+  cultural_use TEXT NOT NULL,
+  seasonal_interest TEXT NOT NULL,
+  visitor_fact TEXT NOT NULL,
+  conservation_note TEXT NOT NULL,
+  language VARCHAR(5) NOT NULL DEFAULT 'en',
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS visitor_collections (
