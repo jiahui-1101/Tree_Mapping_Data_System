@@ -58,6 +58,24 @@ export async function recommendRouteFromBackend({ preferences, duration, languag
   }
 }
 
+export async function fetchVisitorProfiles({ language, query = "", zone = "all", trees = TREES }) {
+  try {
+    const params = new URLSearchParams({ language, query, zone });
+    const payload = await requestVisitorApi(`/api/visitor/profiles?${params.toString()}`);
+    return {
+      ok: true,
+      profiles: payload.trees || [],
+      source: "backend",
+    };
+  } catch {
+    return {
+      ok: true,
+      profiles: trees.map((tree) => getPublicTreeCard(tree, language)),
+      source: "local",
+    };
+  }
+}
+
 export async function askVisitorChatBackend({ question, language }) {
   try {
     return await requestVisitorApi("/api/visitor/chat", {
@@ -103,4 +121,3 @@ export async function fetchVisitorTreeCard({ tree, language, growthYears = 10 })
     };
   }
 }
-
