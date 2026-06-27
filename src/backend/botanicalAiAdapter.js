@@ -28,3 +28,21 @@ async function callGemini({ question, language, safeContext, config }) {
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${config.geminiModel}:generateContent?key=${config.geminiApiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
+      signal: timer.signal,
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: buildPrompt({ question, language, safeContext }) }] }],
+        generationConfig: { temperature: 0.4, maxOutputTokens: 320 },
+      }),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload.candidates?.[0]?.content?.parts?.map((part) => part.text).join("").trim() || null;
+  } finally {
+    timer.done();
+  }
+}
+
+async function callOpenAi({ question, language, safeContext, config }) {
+  if (!config.openaiApiKey) return null;
+  const timer = withTimeout(config.aiTimeoutMs);
+  try {
