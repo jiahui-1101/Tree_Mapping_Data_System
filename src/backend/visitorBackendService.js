@@ -167,3 +167,40 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
     },
 
     async recommendVisitorRoute({ sessionId, preferences = [], duration = 60, language = "en", aiAvailable = true } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const selectedPreferences = preferences.filter((preference) => VISITOR_INTEREST_IDS.includes(preference));
+      const visitDuration = Number(duration) || 60;
+      if (selectedPreferences.length === 0) {
+        return {
+          ok: false,
+          status: 400,
+          error: "EMPTY_PREFERENCES",
+          message: visitorText(selectedLanguage, "explore.validation"),
+        };
+      }
+      const routeResult = aiAvailable ? buildVisitorRoute(selectedPreferences, TREES) : buildFallbackRoute(visitDuration, selectedLanguage);
+      if (!routeResult.ok) return { ...routeResult, status: 400 };
+      const stored = await store.recordRoutePlan({
+        sessionId: normalizeSessionId(sessionId),
+        preferences: selectedPreferences,
+        duration: visitDuration,
+        stopTreeIds: routeResult.route.map((tree) => tree.id),
+        totalDistance: routeResult.totalDistance,
+        fallback: Boolean(routeResult.fallback),
+      });
+      return visitorRoutePayload(routeResult, selectedPreferences, visitDuration, selectedLanguage, stored);
+    },
+
+    async answerVisitorChat({ sessionId, question = "", language = "en" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const text = String(question || "").trim();
+      if (!text) {
+        return {
+          ok: false,
+          status: 400,
+          error: "EMPTY_QUESTION",
+          message: visitorText(selectedLanguage, "chat.placeholder"),
+        };
+      }
+      const fallback = fallbackChatAnswer(selectedLanguage, text);
+      const aiResult = await askBotanicalAi({
