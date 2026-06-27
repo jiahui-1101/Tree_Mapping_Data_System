@@ -104,3 +104,51 @@ GET /api/visitor/profiles?language=en&zone=all&query=meranti
 Returns visitor-safe public tree cards.
 
 ### Digital Tree ID Card
+
+```http
+GET /api/visitor/trees/TBJ-005?language=zh&growthYears=25
+```
+
+Returns public profile, growth simulation, and privacy metadata.
+
+### Preference Route
+
+```http
+POST /api/visitor/routes/recommend
+X-Visitor-Session: visitor-session-id
+Content-Type: application/json
+
+{
+  "preferences": ["rare", "ancient"],
+  "duration": 90,
+  "language": "en"
+}
+```
+
+Returns route stops, waypoint path, distance, rationale, and fallback notice if needed.
+
+### Chatbot
+
+```http
+POST /api/visitor/chat
+X-Visitor-Session: visitor-session-id
+Content-Type: application/json
+
+{
+  "question": "Why are rare species locations hidden?",
+  "language": "en"
+}
+```
+
+Returns answer, intent, provider metadata, fallback status, and safety flags.
+
+### Collection
+
+```http
+GET /api/visitor/collection?language=en
+POST /api/visitor/collection
+```
+
+`POST` body:
+
+```json
