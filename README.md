@@ -64,7 +64,8 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
       <a href="src/features/ss3-visitor/CollectionPage.jsx">CollectionPage.jsx</a><br>
       <a href="src/features/ss3-visitor/TreeIdCardModal.jsx">TreeIdCardModal.jsx</a><br>
       <a href="src/backend/visitorBackendService.js">visitorBackendService.js</a><br>
-      <a href="src/backend/server.js">server.js</a>
+      <a href="src/backend/server.js">server.js</a><br>
+      <a href="docs/SS3_BACKEND.md">SS3_BACKEND.md</a>
     </td>
   </tr>
   <tr>
@@ -133,81 +134,3 @@ a modern browser.
 ### Available Commands
 
 ```bash
-npm run dev      # Start the development server
-npm run dev:backend # Start the SS3 Express backend API
-npm run build    # Create a production build
-npm run preview  # Preview the production build
-npm test         # Run service and integration tests
-```
-
-### SS3 Backend API
-
-The Visitor Engagement & Education backend is implemented as a lightweight Express API in `src/backend/server.js`. It supports the Progress 2 SS3 requirements while still using prototype in-memory storage instead of PostgreSQL.
-
-| Feature | Endpoint |
-| --- | --- |
-| Health and module metadata | `GET /api/health` |
-| Visitor-safe tree profiles | `GET /api/visitor/profiles?language=en` |
-| Digital Tree ID Card with growth simulation | `GET /api/visitor/trees/:treeId?language=en&growthYears=10` |
-| AI preference route recommender | `POST /api/visitor/routes/recommend` |
-| AI plant chatbot response | `POST /api/visitor/chat` |
-| Exploration collection | `GET /api/visitor/collection`, `POST /api/visitor/collection` |
-| QR discovery scan analytics | `POST /api/visitor/scans`, `GET /api/visitor/analytics/scans` |
-
-Visitor API responses intentionally hide operational health fields and mask protected rare-species coordinates, matching the SS3 visitor safety and SS4 RBAC/privacy requirements.
-
-## Demo Accounts
-
-| Role | ID | Password |
-| --- | --- | --- |
-| Admin | `admin001` | `admin123` |
-| Ranger | `RGR001` | `ranger123` |
-| Visitor | `visitor@gmail.com` | `visitor123` |
-| IT Support | `it001` | `support123` |
-
-Visitors can also continue as guests. Visitor collection history and selected language are stored in browser `localStorage`.
-
-## Prototype Notes
-
-This repository is a React UI prototype with a focused SS3 backend API. The following items are still represented by mock data, simulated UI states, in-memory backend storage, or local browser storage only:
-
-- Backend authentication and user session persistence.
-- Database synchronization and server-side storage.
-- Real AI model/API calls for diagnosis, chatbot responses, route recommendation, or spatial planning.
-- QR endpoint generation and production scan routing.
-- GPS validation, push notifications, and offline mobile synchronization.
-- Server-side audit log persistence and security enforcement.
-
-## Project Structure
-
-```text
-src/
-  components/       Shared layout, common UI, map, and QR components
-  config/           Navigation and page metadata
-  data/             Mock records for trees, tasks, reports, audits, and operations
-  backend/          SS3 Express API and visitor engagement backend services
-  features/         Role and subsystem feature pages
-  services/         Mock business logic, auth, storage, ranger, admin, and visitor helpers
-  styles/           Global styles, responsive rules, tokens, and component styles
-test/               Service and integration tests
-```
-
-## Validation and Contributions
-
-Before merging a contribution, run:
-
-```bash
-npm test
-npm run build
-```
-
-Keep subsystem work in focused commits. Do not commit `node_modules`, generated
-`dist` output, local environment files, or unrelated module changes. Fetch and
-integrate the latest shared `main` branch before pushing.
-
-## Data and Privacy Note
-
-This repository uses prototype records for coursework demonstrations. Protected
-tree coordinates are masked in visitor-facing views, and operational records are
-sample data rather than production or surveyed GIS data.
-
