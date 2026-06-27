@@ -34,3 +34,16 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
     loaded = true;
     if (!persist || !filePath) return;
     try {
+      const raw = await fs.readFile(filePath, "utf8");
+      state = cloneState(JSON.parse(raw));
+    } catch (error) {
+      if (error.code !== "ENOENT") throw error;
+    }
+  }
+
+  async function save() {
+    if (!persist || !filePath) return;
+    await fs.mkdir(path.dirname(filePath), { recursive: true });
+    await fs.writeFile(filePath, JSON.stringify(state, null, 2), "utf8");
+  }
+
