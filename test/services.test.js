@@ -374,3 +374,60 @@ test("SS3 backend collection and scan analytics support visitor discovery tracki
 
   const scan = await recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
   assert.equal(scan.ok, true);
+  assert.equal(scan.collection.totalCollected, 2);
+  const analytics = await getVisitorAnalytics();
+  assert.equal(analytics.totalScans, 1);
+  assert.equal(analytics.byZone.Tanaman, 1);
+});
+
+test("SS3 backend exposes scan events in SS4 QRScanEvents shape", async () => {
+  await resetVisitorBackendState();
+  await recordVisitorScan({ sessionId: "ss4-link", treeId: "TBJ-002", language: "en" });
+  const payload = await getSs4QrScanEvents();
+  assert.equal(payload.ok, true);
+  assert.equal(payload.targetModel, "SS4.QRScanEvents");
+  assert.deepEqual(Object.keys(payload.events[0]), [
+    "scanId",
+    "qrId",
+    "treeId",
+    "actorId",
+    "roleDetected",
+    "routedTo",
+    "scanResult",
+    "scannedAt",
+  ]);
+  assert.equal(payload.events[0].qrId, "QR-TBJ-002");
+  assert.equal(payload.events[0].routedTo, "SS3-M3-A Tree ID Card");
+});
+
+test("SS3 Express API exposes visitor backend endpoints", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  await backend.resetVisitorBackendState();
+  const server = createApp({ backend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const health = await fetch(`${baseUrl}/api/health`).then((response) => response.json());
+    assert.equal(health.ok, true);
+    assert.ok(health.modules.some((moduleName) => moduleName.includes("M3-A")));
+
+    const tree = await fetch(`${baseUrl}/api/visitor/trees/TBJ-005?language=en&growthYears=10`).then((response) => response.json());
+    assert.equal(tree.ok, true);
+    assert.equal(tree.tree.status, undefined);
+    assert.equal(tree.privacy.protectedCoordinatesMasked, true);
+
+    const collection = await fetch(`${baseUrl}/api/visitor/collection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Visitor-Session": "api-test" },
+      body: JSON.stringify({ treeId: "TBJ-002", language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(collection.ok, true);
+    assert.equal(collection.collection.totalCollected, 1);
+
+    const ss4Events = await fetch(`${baseUrl}/api/visitor/integrations/ss4/qr-scan-events`).then((response) => response.json());
+    assert.equal(ss4Events.ok, true);
+    assert.equal(ss4Events.targetModel, "SS4.QRScanEvents");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
