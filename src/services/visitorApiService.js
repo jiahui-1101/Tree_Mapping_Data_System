@@ -22,3 +22,24 @@ export function getVisitorSessionId(storage) {
   source?.setItem(SESSION_KEY, id);
   return id;
 }
+
+async function requestVisitorApi(path, { method = "GET", body, sessionId = getVisitorSessionId() } = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Visitor-Session": sessionId,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.ok === false) {
+    throw new Error(payload.message || payload.error || "Visitor backend request failed");
+  }
+  return payload;
+}
+
+export async function recommendRouteFromBackend({ preferences, duration, language, trees = TREES }) {
+  try {
+    const payload = await requestVisitorApi("/api/visitor/routes/recommend", {
+      method: "POST",
