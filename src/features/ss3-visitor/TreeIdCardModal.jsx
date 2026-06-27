@@ -42,3 +42,25 @@ export default function TreeIdCardModal({ tree, language, onClose, onCollect }) 
       <div className="tree-id-premium">
         <section className="tree-id-hero tree-id-photo-hero">
           <TreePhoto
+            src={profile.photoUrl}
+            alt={profile.photoAlt}
+            className="tree-id-photo"
+            caption={`${t("profiles.representativePhoto")} · ${profile.photoCredit}`}
+            overlay={(
+              <div className="tree-id-photo-title">
+                <span>{profile.zone}</span>
+                <strong>{profile.name}</strong>
+                <em>{profile.scientificName}</em>
+              </div>
+            )}
+          />
+          <div className="tree-id-hero-copy">
+            <div className="tree-id-code-row">
+              <span className="premium-eyebrow">{t("profiles.publicProfile")}</span>
+              <b>{profile.id}</b>
+            </div>
+            <h2>{profile.name}</h2>
+            <em>{profile.scientificName}</em>
+            <p>{profile.description}</p>
+            <div className="profile-badge-row">
+              {profile.badges.map((badge) => <span key={badge}>{badge}</span>)}
