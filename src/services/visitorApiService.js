@@ -76,3 +76,31 @@ export async function collectVisitorTreeBackend({ tree, language }) {
       body: { treeId: tree.id, language },
     });
   } catch {
+    return null;
+  }
+}
+
+export async function recordVisitorScanBackend({ tree, language, source = "qr" }) {
+  try {
+    return await requestVisitorApi("/api/visitor/scans", {
+      method: "POST",
+      body: { treeId: tree.id, language, source },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchVisitorTreeCard({ tree, language, growthYears = 10 }) {
+  try {
+    return await requestVisitorApi(`/api/visitor/trees/${tree.id}?language=${encodeURIComponent(language)}&growthYears=${growthYears}`);
+  } catch {
+    return {
+      ok: true,
+      tree: getPublicTreeCard(tree, language),
+      growthSimulation: null,
+      source: "local",
+    };
+  }
+}
+
