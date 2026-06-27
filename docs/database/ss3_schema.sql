@@ -71,3 +71,13 @@ CREATE TABLE IF NOT EXISTS visitor_chat_logs (
   answer TEXT NOT NULL,
   intent VARCHAR(60) NOT NULL,
   provider VARCHAR(60) NOT NULL,
+  fallback_used BOOLEAN NOT NULL DEFAULT FALSE,
+  asked_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_visitor_scan_events_zone ON visitor_scan_events(zone);
+CREATE INDEX IF NOT EXISTS idx_visitor_scan_events_tree ON visitor_scan_events(tree_id);
+CREATE INDEX IF NOT EXISTS idx_visitor_collections_session ON visitor_collections(session_id);
+CREATE INDEX IF NOT EXISTS idx_visitor_route_plans_session ON visitor_route_plans(session_id);
+CREATE INDEX IF NOT EXISTS idx_visitor_chat_logs_session ON visitor_chat_logs(session_id);
+
