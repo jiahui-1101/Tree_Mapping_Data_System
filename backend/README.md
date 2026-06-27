@@ -2,7 +2,7 @@
 
 This backend supports SS1 Module M1-C: Predictive Maintenance Scheduler.
 
-It uses a lightweight Node.js HTTP server. By default it can run with in-memory data for quick testing. For a complete backend demo, set `BACKEND_STORE=mysql` and run it with the MySQL schema in `database/schema.sql`.
+It runs inside the shared Tree Mapping backend server. By default it can run with in-memory data for quick testing. For a complete backend demo, set `BACKEND_STORE=mysql` and run it with the MySQL schema in `database/schema.sql`.
 
 The AI prediction is simulated with rule-based backend logic using tree health score and status. A real AI service can be connected later by replacing the generate-alert logic.
 
@@ -45,6 +45,7 @@ If `.env` contains `BACKEND_STORE=mysql`, the API will use MySQL. Otherwise, it 
 ## Endpoints
 
 ```text
+GET    /
 GET    /api/health
 GET    /api/predictive-alerts
 GET    /api/predictive-alerts/:id
@@ -65,3 +66,7 @@ POST   /api/dev/reset
 ## Demo requests
 
 Use `backend/http/requests.http` in VS Code REST Client or Thunder Client.
+
+## Adding other backend modules
+
+Add each subsystem route file inside `backend/routes`, then register it in `backend/routes/index.js`. Keep module data logic inside `backend/repositories` or a module-specific folder so the shared server stays clean.
