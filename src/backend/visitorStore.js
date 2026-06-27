@@ -79,3 +79,19 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
       state.scans.unshift(stored);
       await save();
       return stored;
+    },
+
+    async recordChat(log) {
+      await ensureLoaded();
+      const stored = {
+        chatId: nextId("VCL", state.chatLogs, "chatId"),
+        ...log,
+        askedAt: log.askedAt || new Date().toISOString(),
+      };
+      state.chatLogs.unshift(stored);
+      await save();
+      return stored;
+    },
+
+    async recordRoutePlan(plan) {
+      await ensureLoaded();
