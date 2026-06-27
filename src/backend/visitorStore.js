@@ -109,3 +109,23 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
       await ensureLoaded();
       const byZone = state.scans.reduce((totals, event) => {
         totals[event.zone] = (totals[event.zone] || 0) + 1;
+        return totals;
+      }, {});
+      const byTree = state.scans.reduce((totals, event) => {
+        totals[event.treeId] = (totals[event.treeId] || 0) + 1;
+        return totals;
+      }, {});
+      return {
+        totalScans: state.scans.length,
+        totalChatQuestions: state.chatLogs.length,
+        totalRoutePlans: state.routePlans.length,
+        byZone,
+        byTree,
+        events: [...state.scans],
+        chatLogs: [...state.chatLogs],
+        routePlans: [...state.routePlans],
+      };
+    },
+  };
+}
+
