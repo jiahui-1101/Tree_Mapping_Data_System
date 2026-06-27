@@ -20,3 +20,17 @@ function cloneState(state = DEFAULT_STATE) {
 function nextId(prefix, records, key) {
   const max = records.reduce((current, record) => {
     const value = Number(String(record[key] || "").match(/(\d+)$/)?.[1] || 0);
+    return Math.max(current, value);
+  }, 0);
+  return `${prefix}-${String(max + 1).padStart(3, "0")}`;
+}
+
+export function createVisitorStore({ filePath, persist = true, initialState } = {}) {
+  let loaded = false;
+  let state = cloneState(initialState);
+
+  async function ensureLoaded() {
+    if (loaded) return;
+    loaded = true;
+    if (!persist || !filePath) return;
+    try {
