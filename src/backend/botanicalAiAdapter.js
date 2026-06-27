@@ -69,3 +69,22 @@ async function callOpenAi({ question, language, safeContext, config }) {
   } finally {
     timer.done();
   }
+}
+
+export async function askBotanicalAi({ question, language, safeContext, config }) {
+  const provider = config.aiProvider;
+  try {
+    if (provider === "gemini") {
+      const answer = await callGemini({ question, language, safeContext, config });
+      if (answer) return { answer, provider: PROVIDER_LABEL.gemini, fallback: false };
+    }
+    if (provider === "openai") {
+      const answer = await callOpenAi({ question, language, safeContext, config });
+      if (answer) return { answer, provider: PROVIDER_LABEL.openai, fallback: false };
+    }
+  } catch {
+    return { answer: "", provider: PROVIDER_LABEL[provider] || provider, fallback: true };
+  }
+  return { answer: "", provider: PROVIDER_LABEL[provider] || PROVIDER_LABEL.mock, fallback: provider !== "mock" };
+}
+
