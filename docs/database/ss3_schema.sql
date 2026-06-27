@@ -37,3 +37,13 @@ CREATE TABLE IF NOT EXISTS visitor_collections (
 CREATE TABLE IF NOT EXISTS visitor_scan_events (
   scan_id VARCHAR(30) PRIMARY KEY,
   session_id VARCHAR(80) NOT NULL REFERENCES visitor_sessions(session_id),
+  tree_id VARCHAR(20) NOT NULL,
+  zone VARCHAR(80) NOT NULL,
+  source VARCHAR(30) NOT NULL DEFAULT 'qr',
+  role_detected VARCHAR(30) NOT NULL DEFAULT 'Visitor',
+  routed_to VARCHAR(80) NOT NULL DEFAULT 'SS3-M3-A Tree ID Card',
+  scan_result VARCHAR(30) NOT NULL DEFAULT 'success',
+  scanned_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS visitor_route_plans (
