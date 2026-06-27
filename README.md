@@ -1,8 +1,8 @@
 # Tree Mapping Data System for Johor Botanical Garden
 
-Frontend prototype for the Johor Botanical Garden Tree Mapping Data System, developed by **NextLevel** for SCSE2243 Application Development.
+Frontend and backend prototype for the Johor Botanical Garden Tree Mapping Data System, developed by **NextLevel** for SCSE2243 Application Development.
 
-The system is designed to digitise tree inventory, field operations, visitor education, QR-based access, and map-based decision support for garden management. This repository contains the React/Vite user interface prototype with mock data, simulated AI responses, and role-based flows for demonstration.
+The system is designed to digitise tree inventory, field operations, visitor education, QR-based access, and map-based decision support for garden management. This repository contains the React/Vite user interface prototype, shared Node.js backend server, mock data, simulated AI responses, and role-based flows for demonstration.
 
 ## Project Background
 
@@ -108,6 +108,8 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
 
 - **React** for the frontend interface.
 - **Vite** for local development and production build tooling.
+- **Node.js HTTP server** for shared backend APIs.
+- **MySQL** for the SS1 predictive maintenance backend demo.
 - **Three.js** for the 3D garden scene.
 - **qrcode** for QR label generation.
 - **Node.js test runner** for service-level tests.
@@ -127,10 +129,23 @@ npm run dev
 Vite prints the local development address in the terminal. Open that address in
 a modern browser.
 
+To run the shared backend server:
+
+```bash
+npm run backend
+```
+
+Backend default URL:
+
+```text
+http://localhost:4001
+```
+
 ### Available Commands
 
 ```bash
 npm run dev      # Start the development server
+npm run backend  # Start the shared backend API server
 npm run build    # Create a production build
 npm run preview  # Preview the production build
 npm test         # Run service and integration tests
@@ -149,10 +164,10 @@ Visitors can also continue as guests. Visitor collection history and selected la
 
 ## Prototype Notes
 
-This repository is a frontend UI prototype. The following items are represented by mock data, simulated UI states, or local browser storage only:
+This repository is a coursework prototype. Most frontend flows still use mock data, simulated UI states, or local browser storage. SS1 M1-C also includes a shared backend route module with MySQL support for the predictive maintenance approval flow.
 
 - Backend authentication and user session persistence.
-- Database synchronization and server-side storage.
+- Full production database synchronization across every subsystem.
 - Real AI model/API calls for diagnosis, route recommendation, chatbot responses, or spatial planning.
 - QR endpoint generation and production scan routing.
 - GPS validation, push notifications, and offline mobile synchronization.
@@ -161,7 +176,16 @@ This repository is a frontend UI prototype. The following items are represented 
 ## Project Structure
 
 ```text
+backend/
+  config/           Backend configuration and database connection helpers
+  database/         SQL schema and seed records
+  http/             REST Client request examples
+  repositories/     Backend data access modules
+  routes/           Shared API route dispatcher and module routes
+  utils/            Shared backend HTTP helpers
+  server.js         Shared backend server entry point
 src/
+  app/              Shared frontend app wrapper helpers and page renderer
   components/       Shared layout, common UI, map, and QR components
   config/           Navigation and page metadata
   data/             Mock records for trees, tasks, reports, audits, and operations
