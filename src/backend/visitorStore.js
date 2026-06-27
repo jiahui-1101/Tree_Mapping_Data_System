@@ -47,3 +47,19 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
     await fs.writeFile(filePath, JSON.stringify(state, null, 2), "utf8");
   }
 
+  return {
+    async reset(nextState = DEFAULT_STATE) {
+      loaded = true;
+      state = cloneState(nextState);
+      await save();
+    },
+
+    async getCollection(sessionId) {
+      await ensureLoaded();
+      return [...new Set(state.collections[sessionId] || [])];
+    },
+
+    async addCollectionTree(sessionId, treeId) {
+      await ensureLoaded();
+      const current = new Set(state.collections[sessionId] || []);
+      const isNew = !current.has(treeId);
