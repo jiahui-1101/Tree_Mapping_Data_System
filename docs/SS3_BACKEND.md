@@ -85,3 +85,22 @@ The Express API validates SS3 visitor requests before they reach the business se
 - chat, collection, and scan writes require the relevant JSON body fields.
 - validation failures return `{ ok: false, error: "VALIDATION_ERROR" }`.
 
+## API Summary
+
+### Health
+
+```http
+GET /api/health
+```
+
+Returns backend metadata and mapped SS3 modules.
+
+### Visitor Profiles
+
+```http
+GET /api/visitor/profiles?language=en&zone=all&query=meranti
+```
+
+Returns visitor-safe public tree cards.
+
+### Digital Tree ID Card
