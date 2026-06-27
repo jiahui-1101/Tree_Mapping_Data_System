@@ -118,3 +118,52 @@ function visitorRoutePayload(routeResult, selectedPreferences, visitDuration, la
     fallback: Boolean(routeResult.fallback),
     notice: routeResult.notice || "",
     stops: safeStops,
+    route: safeStops,
+    waypoints: routeResult.waypoints.map((point) => {
+      const tree = point.type === "tree" ? TREES.find((item) => item.id === point.id) : null;
+      if (tree?.rare) return { ...point, x: null, y: null, coordinateLabel: "Protected location - exact coordinates hidden" };
+      return point;
+    }),
+    rationale: {
+      en: "Stops are selected from visitor-safe public profiles that match the chosen plant interests.",
+      bm: "Hentian dipilih daripada profil awam selamat untuk pelawat berdasarkan minat tumbuhan yang dipilih.",
+      zh: "路线停靠点来自符合所选兴趣且适合访客查看的公开树木资料。",
+    }[language],
+  };
+}
+
+export function createVisitorBackend({ config = getBackendConfig(), store = createVisitorStore({ filePath: config.visitorStorePath }) } = {}) {
+  return {
+    async resetVisitorBackendState() {
+      await store.reset();
+    },
+
+    listVisitorTreeProfiles({ language = "en", query = "", zone = "all" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const needle = String(query || "").trim().toLowerCase();
+      return TREES
+        .filter((tree) => zone === "all" || tree.zone === zone)
+        .filter((tree) => !needle || `${tree.id} ${tree.name} ${tree.scientificName}`.toLowerCase().includes(needle))
+        .map((tree) => publicTreePayload(tree, selectedLanguage));
+    },
+
+    getVisitorTreeIdCard(treeId, { language = "en", growthYears = 10 } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const tree = findTree(String(treeId || ""), TREES);
+      if (!tree) {
+        return { ok: false, status: 404, error: "TREE_NOT_FOUND", message: visitorText(selectedLanguage, "qr.invalid") };
+      }
+      const profile = publicTreePayload(tree, selectedLanguage);
+      return {
+        ok: true,
+        tree: profile,
+        growthSimulation: projectGrowth(profile, growthYears),
+        privacy: {
+          operationalHealthHidden: true,
+          protectedCoordinatesMasked: tree.rare,
+          message: profile.conservationNote,
+        },
+      };
+    },
+
+    async recommendVisitorRoute({ sessionId, preferences = [], duration = 60, language = "en", aiAvailable = true } = {}) {
