@@ -431,3 +431,50 @@ test("SS3 Express API exposes visitor backend endpoints", async () => {
   }
 });
 
+test("SS3 Express API validates visitor request payloads", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const server = createApp({ backend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const invalidTree = await fetch(`${baseUrl}/api/visitor/trees/not-a-tree`).then((response) => response.json());
+    assert.equal(invalidTree.ok, false);
+    assert.equal(invalidTree.error, "VALIDATION_ERROR");
+
+    const invalidRoute = await fetch(`${baseUrl}/api/visitor/routes/recommend`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferences: "rare" }),
+    }).then((response) => response.json());
+    assert.equal(invalidRoute.ok, false);
+    assert.match(invalidRoute.message, /preferences must be an array/);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("SS3 backend persists visitor collection and analytics through injected store", async () => {
+  const store = createVisitorStore({ persist: false });
+  const backend = createVisitorBackend({ store, config: { aiProvider: "mock", aiTimeoutMs: 100 } });
+  await backend.resetVisitorBackendState();
+  await backend.addTreeToVisitorCollection({ sessionId: "persisted", treeId: "TBJ-003", language: "en" });
+  await backend.recordVisitorScan({ sessionId: "persisted", treeId: "TBJ-003", language: "en", source: "qr" });
+  await backend.answerVisitorChat({ sessionId: "persisted", question: "Where are the lakes?", language: "en" });
+  await backend.recommendVisitorRoute({ sessionId: "persisted", preferences: ["shaded"], duration: 45, language: "en" });
+
+  const collection = await backend.getVisitorCollection({ sessionId: "persisted", language: "en" });
+  const analytics = await backend.getVisitorAnalytics();
+  assert.equal(collection.collection.totalCollected, 1);
+  assert.equal(analytics.totalScans, 1);
+  assert.equal(analytics.totalChatQuestions, 1);
+  assert.equal(analytics.totalRoutePlans, 1);
+});
+
+test("SS3 database schema documents visitor integration tables", () => {
+  const schema = readFileSync(new URL("../docs/database/ss3_schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_sessions/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_collections/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_scan_events/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_chat_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_route_plans/);
+});
+
