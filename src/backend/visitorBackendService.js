@@ -318,3 +318,11 @@ const defaultBackend = createVisitorBackend();
 
 export const resetVisitorBackendState = (...args) => defaultBackend.resetVisitorBackendState(...args);
 export const listVisitorTreeProfiles = (...args) => defaultBackend.listVisitorTreeProfiles(...args);
+export const getVisitorTreeIdCard = (...args) => defaultBackend.getVisitorTreeIdCard(...args);
+export const recommendVisitorRoute = (...args) => defaultBackend.recommendVisitorRoute(...args);
+export const answerVisitorChat = (...args) => defaultBackend.answerVisitorChat(...args);
+export const addTreeToVisitorCollection = (...args) => defaultBackend.addTreeToVisitorCollection(...args);
+export const getVisitorCollection = (...args) => defaultBackend.getVisitorCollection(...args);
+export const recordVisitorScan = (...args) => defaultBackend.recordVisitorScan(...args);
+export const getVisitorAnalytics = (...args) => defaultBackend.getVisitorAnalytics(...args);
+export const getSs4QrScanEvents = (...args) => defaultBackend.getSs4QrScanEvents(...args);
