@@ -244,3 +244,63 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
       const result = await store.addCollectionTree(normalizeSessionId(sessionId), tree.id);
       return {
         ok: true,
+        isNew: result.isNew,
+        message: visitorText(selectedLanguage, result.isNew ? "collection.unlocked" : "collection.alreadyCollected", { name: tree.name }),
+        collection: buildCollectionSummary(result.treeIds, selectedLanguage),
+      };
+    },
+
+    async getVisitorCollection({ sessionId, language = "en" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const normalizedSessionId = normalizeSessionId(sessionId);
+      const treeIds = await store.getCollection(normalizedSessionId);
+      return {
+        ok: true,
+        sessionId: normalizedSessionId,
+        collection: buildCollectionSummary(treeIds, selectedLanguage),
+      };
+    },
+
+    async recordVisitorScan({ sessionId, treeId, language = "en", source = "qr" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const tree = findTree(String(treeId || ""), TREES);
+      if (!tree) {
+        return { ok: false, status: 404, error: "TREE_NOT_FOUND", message: visitorText(selectedLanguage, "qr.invalid") };
+      }
+      const normalizedSessionId = normalizeSessionId(sessionId);
+      const event = await store.recordScan({
+        sessionId: normalizedSessionId,
+        treeId: tree.id,
+        zone: tree.zone,
+        source,
+        roleDetected: "Visitor",
+        routedTo: "SS3-M3-A Tree ID Card",
+        scanResult: "success",
+      });
+      const collection = await store.addCollectionTree(normalizedSessionId, tree.id);
+      return {
+        ok: true,
+        event,
+        tree: publicTreePayload(tree, selectedLanguage),
+        collection: buildCollectionSummary(collection.treeIds, selectedLanguage),
+      };
+    },
+
+    async getVisitorAnalytics() {
+      const analytics = await store.getAnalytics();
+      return { ok: true, ...analytics };
+    },
+  };
+}
+
+const defaultBackend = createVisitorBackend();
+
+export const resetVisitorBackendState = (...args) => defaultBackend.resetVisitorBackendState(...args);
+export const listVisitorTreeProfiles = (...args) => defaultBackend.listVisitorTreeProfiles(...args);
+export const getVisitorTreeIdCard = (...args) => defaultBackend.getVisitorTreeIdCard(...args);
+export const recommendVisitorRoute = (...args) => defaultBackend.recommendVisitorRoute(...args);
+export const answerVisitorChat = (...args) => defaultBackend.answerVisitorChat(...args);
+export const addTreeToVisitorCollection = (...args) => defaultBackend.addTreeToVisitorCollection(...args);
+export const getVisitorCollection = (...args) => defaultBackend.getVisitorCollection(...args);
+export const recordVisitorScan = (...args) => defaultBackend.recordVisitorScan(...args);
+export const getVisitorAnalytics = (...args) => defaultBackend.getVisitorAnalytics(...args);
