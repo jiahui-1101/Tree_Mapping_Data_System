@@ -125,3 +125,19 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
   });
 
   app.use((error, _request, response, _next) => {
+    response.status(500).json({
+      ok: false,
+      error: "SERVER_ERROR",
+      message: error.message || "Unexpected backend error",
+    });
+  });
+
+  return app;
+}
+
+if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
+  const config = getBackendConfig();
+  createApp({ backend: createVisitorBackend({ config }) }).listen(config.port, () => {
+    console.log(`TBJ SS3 backend listening on http://localhost:${config.port}`);
+  });
+}
