@@ -46,3 +46,26 @@ async function callOpenAi({ question, language, safeContext, config }) {
   if (!config.openaiApiKey) return null;
   const timer = withTimeout(config.aiTimeoutMs);
   try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${config.openaiApiKey}`,
+      },
+      signal: timer.signal,
+      body: JSON.stringify({
+        model: config.openaiModel,
+        temperature: 0.4,
+        max_tokens: 320,
+        messages: [
+          { role: "system", content: "You are a visitor-safe botanical education assistant for Johor Botanical Garden." },
+          { role: "user", content: buildPrompt({ question, language, safeContext }) },
+        ],
+      }),
+    });
+    if (!response.ok) return null;
+    const payload = await response.json();
+    return payload.choices?.[0]?.message?.content?.trim() || null;
+  } finally {
+    timer.done();
+  }
