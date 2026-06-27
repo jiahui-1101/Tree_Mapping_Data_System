@@ -68,3 +68,14 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
   });
 
   app.post("/api/visitor/routes/recommend", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["preferences"])) return;
+    if (!Array.isArray(request.body.preferences)) {
+      return badRequest(response, "preferences must be an array.");
+    }
+    sendResult(response, await backend.recommendVisitorRoute({
+      ...request.body,
+      sessionId: sessionId(request),
+    }));
+  }));
+
+  app.post("/api/visitor/chat", asyncRoute(async (request, response) => {
