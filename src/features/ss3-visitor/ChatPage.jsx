@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import GardenMascot from "../../components/common/GardenMascot.jsx";
 import { VisitorHeroCard, VisitorPageShell } from "../../components/common/VisitorUI.jsx";
+import { askVisitorChatBackend } from "../../services/visitorApiService.js";
 import { visitorText } from "../../services/visitorI18n.js";
 
 function mockBotReply(language, question) {
@@ -37,12 +38,20 @@ function mockBotReply(language, question) {
 export default function ChatPage({ language }) {
   const t = (path) => visitorText(language, path);
   const [input, setInput] = useState("");
+  const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState([{ from: "bot", text: t("chat.hello") }]);
   useEffect(() => setMessages([{ from: "bot", text: t("chat.hello") }]), [language]);
-  const send = (value = input) => {
+  const send = async (value = input) => {
     if (!value.trim()) return;
-    setMessages((current) => [...current, { from: "user", text: value }, { from: "bot", text: mockBotReply(language, value) }]);
+    const question = value.trim();
+    setMessages((current) => [...current, { from: "user", text: question }]);
     setInput("");
+    setIsSending(true);
+    const backendReply = await askVisitorChatBackend({ question, language });
+    const reply = backendReply?.answer || mockBotReply(language, question);
+    const source = backendReply?.provider ? ` · ${backendReply.provider}${backendReply.fallback ? " fallback" : ""}` : "";
+    setMessages((current) => [...current, { from: "bot", text: reply, meta: source }]);
+    setIsSending(false);
   };
   return (
     <VisitorPageShell className="chat-premium">
@@ -58,9 +67,9 @@ export default function ChatPage({ language }) {
           <div><strong>{t("chat.assistantName")}</strong><small><span />{t("chat.status")}</small></div>
           <GardenMascot compact />
         </header>
-        <div className="chat-window">{messages.map((message, index) => <p className={`chat-bubble chat-${message.from}`} key={index}>{message.text}</p>)}</div>
+        <div className="chat-window">{messages.map((message, index) => <p className={`chat-bubble chat-${message.from}`} key={index}>{message.text}{message.meta && <small>{message.meta}</small>}</p>)}{isSending && <p className="chat-bubble chat-bot">...</p>}</div>
         <div className="suggestion-row">{t("chat.suggestions").map((question) => <button key={question} onClick={() => send(question)}>{question}</button>)}</div>
-        <div className="input-row chat-input-row"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder={t("chat.placeholder")} /><button className="button" onClick={() => send()}>{t("chat.send")}</button></div>
+        <div className="input-row chat-input-row"><input value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => event.key === "Enter" && send()} placeholder={t("chat.placeholder")} /><button className="button" disabled={isSending} onClick={() => send()}>{t("chat.send")}</button></div>
       </section>
     </VisitorPageShell>
   );
