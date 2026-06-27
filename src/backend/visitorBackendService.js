@@ -285,3 +285,13 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
         event,
         tree: publicTreePayload(tree, selectedLanguage),
         collection: buildCollectionSummary(collection.treeIds, selectedLanguage),
+      };
+    },
+
+    async getVisitorAnalytics() {
+      const analytics = await store.getAnalytics();
+      return { ok: true, ...analytics };
+    },
+
+    async getSs4QrScanEvents() {
+      const analytics = await store.getAnalytics();
