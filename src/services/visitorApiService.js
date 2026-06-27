@@ -63,3 +63,16 @@ export async function askVisitorChatBackend({ question, language }) {
     return await requestVisitorApi("/api/visitor/chat", {
       method: "POST",
       body: { question, language },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function collectVisitorTreeBackend({ tree, language }) {
+  try {
+    return await requestVisitorApi("/api/visitor/collection", {
+      method: "POST",
+      body: { treeId: tree.id, language },
+    });
+  } catch {
