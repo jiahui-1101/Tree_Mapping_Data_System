@@ -366,3 +366,61 @@ test("SS3 backend chatbot is multilingual and hides sensitive operations", async
 
 test("SS3 backend collection and scan analytics support visitor discovery tracking", async () => {
   await resetVisitorBackendState();
+  const first = await addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  const duplicate = await addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  assert.equal(first.isNew, true);
+  assert.equal(duplicate.isNew, false);
+  assert.equal((await getVisitorCollection({ sessionId: "visitor-a" })).collection.totalCollected, 1);
+
+  const scan = await recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
+  assert.equal(scan.ok, true);
+  assert.equal(scan.collection.totalCollected, 2);
+  const analytics = await getVisitorAnalytics();
+  assert.equal(analytics.totalScans, 1);
+  assert.equal(analytics.byZone.Tanaman, 1);
+});
+
+test("SS3 Express API exposes visitor backend endpoints", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  await backend.resetVisitorBackendState();
+  const server = createApp({ backend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const health = await fetch(`${baseUrl}/api/health`).then((response) => response.json());
+    assert.equal(health.ok, true);
+    assert.ok(health.modules.some((moduleName) => moduleName.includes("M3-A")));
+
+    const tree = await fetch(`${baseUrl}/api/visitor/trees/TBJ-005?language=en&growthYears=10`).then((response) => response.json());
+    assert.equal(tree.ok, true);
+    assert.equal(tree.tree.status, undefined);
+    assert.equal(tree.privacy.protectedCoordinatesMasked, true);
+
+    const collection = await fetch(`${baseUrl}/api/visitor/collection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Visitor-Session": "api-test" },
+      body: JSON.stringify({ treeId: "TBJ-002", language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(collection.ok, true);
+    assert.equal(collection.collection.totalCollected, 1);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("SS3 backend persists visitor collection and analytics through injected store", async () => {
+  const store = createVisitorStore({ persist: false });
+  const backend = createVisitorBackend({ store, config: { aiProvider: "mock", aiTimeoutMs: 100 } });
+  await backend.resetVisitorBackendState();
+  await backend.addTreeToVisitorCollection({ sessionId: "persisted", treeId: "TBJ-003", language: "en" });
+  await backend.recordVisitorScan({ sessionId: "persisted", treeId: "TBJ-003", language: "en", source: "qr" });
+  await backend.answerVisitorChat({ sessionId: "persisted", question: "Where are the lakes?", language: "en" });
+  await backend.recommendVisitorRoute({ sessionId: "persisted", preferences: ["shaded"], duration: 45, language: "en" });
+
+  const collection = await backend.getVisitorCollection({ sessionId: "persisted", language: "en" });
+  const analytics = await backend.getVisitorAnalytics();
+  assert.equal(collection.collection.totalCollected, 1);
+  assert.equal(analytics.totalScans, 1);
+  assert.equal(analytics.totalChatQuestions, 1);
+  assert.equal(analytics.totalRoutePlans, 1);
+});
+
