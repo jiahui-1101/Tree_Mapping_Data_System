@@ -35,6 +35,7 @@ import { canAccessPage } from "./services/mockAuthService.js";
 import { nextTaskId, updateTreeRecord } from "./services/adminService.js";
 import { createFieldReport } from "./services/rangerService.js";
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
+import { collectVisitorTreeBackend, recordVisitorScanBackend } from "./services/visitorApiService.js";
 import { visitorText } from "./services/visitorI18n.js";
 
 const ROLE_LABEL = {
@@ -121,11 +122,13 @@ export default function App() {
     const result = addCollectedTreeWithStatus(tree.id);
     setCollection(result.collection);
     showToast(visitorText(language, result.isNew ? "collection.unlocked" : "collection.alreadyCollected", { name: tree.name }));
+    void collectVisitorTreeBackend({ tree, language });
   };
 
   const completeScan = (tree, message, reportDraft) => {
     if (user.role === ROLE.VISITOR) {
       collect(tree);
+      void recordVisitorScanBackend({ tree, language, source: "qr" });
       setScannedTree(tree);
       return null;
     }

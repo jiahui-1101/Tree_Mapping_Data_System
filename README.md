@@ -62,7 +62,10 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
       <a href="src/features/ss3-visitor/ProfilesPage.jsx">ProfilesPage.jsx</a><br>
       <a href="src/features/ss3-visitor/ChatPage.jsx">ChatPage.jsx</a><br>
       <a href="src/features/ss3-visitor/CollectionPage.jsx">CollectionPage.jsx</a><br>
-      <a href="src/features/ss3-visitor/TreeIdCardModal.jsx">TreeIdCardModal.jsx</a>
+      <a href="src/features/ss3-visitor/TreeIdCardModal.jsx">TreeIdCardModal.jsx</a><br>
+      <a href="src/backend/visitorBackendService.js">visitorBackendService.js</a><br>
+      <a href="src/backend/server.js">server.js</a><br>
+      <a href="docs/SS3_BACKEND.md">SS3_BACKEND.md</a>
     </td>
   </tr>
   <tr>
@@ -111,6 +114,7 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
 - **Three.js** for the 3D garden scene.
 - **qrcode** for QR label generation.
 - **Node.js test runner** for service-level tests.
+- **Express.js** for the SS3 visitor engagement backend API.
 - Local mock data and browser `localStorage` for prototype state.
 
 ## Run Locally
@@ -131,10 +135,29 @@ a modern browser.
 
 ```bash
 npm run dev      # Start the development server
+npm run dev:backend # Start the SS3 Express backend API
 npm run build    # Create a production build
 npm run preview  # Preview the production build
 npm test         # Run service and integration tests
 ```
+
+### SS3 Backend API
+
+The Visitor Engagement & Education backend is implemented as an Express API in `src/backend/server.js`. It supports the Progress 2 SS3 requirements with JSON-file persistence, optional AI provider integration, and coursework-safe local fallbacks.
+
+| Feature | Endpoint |
+| --- | --- |
+| Health and module metadata | `GET /api/health` |
+| Visitor-safe tree profiles | `GET /api/visitor/profiles?language=en` |
+| Digital Tree ID Card with growth simulation | `GET /api/visitor/trees/:treeId?language=en&growthYears=10` |
+| AI preference route recommender | `POST /api/visitor/routes/recommend` |
+| AI plant chatbot response | `POST /api/visitor/chat` |
+| Exploration collection | `GET /api/visitor/collection`, `POST /api/visitor/collection` |
+| QR discovery scan analytics | `POST /api/visitor/scans`, `GET /api/visitor/analytics/scans` |
+
+Visitor API responses intentionally hide operational health fields and mask protected rare-species coordinates, matching the SS3 visitor safety and SS4 RBAC/privacy requirements.
+
+Configuration is documented in `.env.example`, and the full backend notes are in `docs/SS3_BACKEND.md`. The visitor frontend calls the backend first for chat, route planning, QR scan analytics, and collection syncing; if the backend is not running, it falls back to local prototype logic so the demo still works.
 
 ## Demo Accounts
 
@@ -149,11 +172,12 @@ Visitors can also continue as guests. Visitor collection history and selected la
 
 ## Prototype Notes
 
-This repository is a frontend UI prototype. The following items are represented by mock data, simulated UI states, or local browser storage only:
+This repository is a React UI prototype with a focused SS3 backend API. The following items are still represented by mock data, simulated UI states, JSON runtime persistence, or local browser storage only:
 
 - Backend authentication and user session persistence.
-- Database synchronization and server-side storage.
-- Real AI model/API calls for diagnosis, route recommendation, chatbot responses, or spatial planning.
+- Database synchronization with PostgreSQL/PostGIS.
+- Real AI model/API calls for diagnosis or spatial planning.
+- SS3 chatbot real AI calls unless `SS3_AI_PROVIDER=gemini` or `SS3_AI_PROVIDER=openai` is configured with an API key.
 - QR endpoint generation and production scan routing.
 - GPS validation, push notifications, and offline mobile synchronization.
 - Server-side audit log persistence and security enforcement.
@@ -165,6 +189,7 @@ src/
   components/       Shared layout, common UI, map, and QR components
   config/           Navigation and page metadata
   data/             Mock records for trees, tasks, reports, audits, and operations
+  backend/          SS3 Express API and visitor engagement backend services
   features/         Role and subsystem feature pages
   services/         Mock business logic, auth, storage, ranger, admin, and visitor helpers
   styles/           Global styles, responsive rules, tokens, and component styles
