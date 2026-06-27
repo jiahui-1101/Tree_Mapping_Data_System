@@ -62,3 +62,79 @@ The `.runtime/` folder is ignored by Git because it contains local runtime data.
 
 ```http
 GET /api/health
+```
+
+Returns backend metadata and mapped SS3 modules.
+
+### Visitor Profiles
+
+```http
+GET /api/visitor/profiles?language=en&zone=all&query=meranti
+```
+
+Returns visitor-safe public tree cards.
+
+### Digital Tree ID Card
+
+```http
+GET /api/visitor/trees/TBJ-005?language=zh&growthYears=25
+```
+
+Returns public profile, growth simulation, and privacy metadata.
+
+### Preference Route
+
+```http
+POST /api/visitor/routes/recommend
+X-Visitor-Session: visitor-session-id
+Content-Type: application/json
+
+{
+  "preferences": ["rare", "ancient"],
+  "duration": 90,
+  "language": "en"
+}
+```
+
+Returns route stops, waypoint path, distance, rationale, and fallback notice if needed.
+
+### Chatbot
+
+```http
+POST /api/visitor/chat
+X-Visitor-Session: visitor-session-id
+Content-Type: application/json
+
+{
+  "question": "Why are rare species locations hidden?",
+  "language": "en"
+}
+```
+
+Returns answer, intent, provider metadata, fallback status, and safety flags.
+
+### Collection
+
+```http
+GET /api/visitor/collection?language=en
+POST /api/visitor/collection
+```
+
+`POST` body:
+
+```json
+{
+  "treeId": "TBJ-001",
+  "language": "en"
+}
+```
+
+### QR Scan Analytics
+
+```http
+POST /api/visitor/scans
+GET /api/visitor/analytics/scans
+```
+
+Scan records are aggregated by zone and tree to support SS4 heatmap integration.
+
