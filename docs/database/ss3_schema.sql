@@ -47,3 +47,12 @@ CREATE TABLE IF NOT EXISTS visitor_scan_events (
 );
 
 CREATE TABLE IF NOT EXISTS visitor_route_plans (
+  route_id VARCHAR(30) PRIMARY KEY,
+  session_id VARCHAR(80) NOT NULL REFERENCES visitor_sessions(session_id),
+  selected_preferences TEXT NOT NULL,
+  duration_minutes INT NOT NULL,
+  total_distance VARCHAR(20) NOT NULL,
+  fallback_used BOOLEAN NOT NULL DEFAULT FALSE,
+  generated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
