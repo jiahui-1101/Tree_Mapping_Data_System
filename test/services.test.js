@@ -16,6 +16,8 @@ import { INITIAL_TASKS } from "../src/data/tasks.js";
 import { visitorText, visitorTreeDescription } from "../src/services/visitorI18n.js";
 import { MAP_ZONES, TBJ_COLLECTION_SUMMARIES, TBJ_MAP_FACTS, TBJ_STAKEHOLDER_PLOTS, countStakeholderRecords, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotInventory, getStakeholderPlotsByZone, getStakeholderSourceGroup, getVisitorZone, percentToWorldPosition, worldToPercentPosition } from "../src/data/gardenMap.js";
 import { getPublicTreeCard, projectGrowth } from "../src/data/visitorTreeProfiles.js";
+import { createApp } from "../src/backend/server.js";
+import { addTreeToVisitorCollection, answerVisitorChat, getVisitorAnalytics, getVisitorCollection, getVisitorTreeIdCard, recommendVisitorRoute, recordVisitorScan, resetVisitorBackendState } from "../src/backend/visitorBackendService.js";
 
 function createStorage() {
   const values = new Map();
@@ -322,5 +324,83 @@ test("growth simulation produces distinct visual model values", () => {
   assert.ok(year50.canopy > year5.canopy);
   assert.ok(year50.root > year5.root);
   assert.notEqual(year5.milestone, year50.milestone);
+});
+
+test("SS3 backend returns visitor-safe digital tree ID cards", () => {
+  resetVisitorBackendState();
+  const result = getVisitorTreeIdCard("TBJ-005", { language: "zh", growthYears: 25 });
+  assert.equal(result.ok, true);
+  assert.equal(result.tree.health, undefined);
+  assert.equal(result.tree.status, undefined);
+  assert.equal(result.tree.x, undefined);
+  assert.equal(result.tree.y, undefined);
+  assert.equal(result.privacy.operationalHealthHidden, true);
+  assert.equal(result.privacy.protectedCoordinatesMasked, true);
+  assert.equal(result.growthSimulation.years, 25);
+  assert.ok(result.growthSimulation.height > 0);
+});
+
+test("SS3 backend validates route preferences and provides AI fallback route", () => {
+  const missing = recommendVisitorRoute({ preferences: [], language: "bm" });
+  assert.equal(missing.ok, false);
+  assert.equal(missing.status, 400);
+  assert.match(missing.message, /sekurang-kurangnya/i);
+
+  const route = recommendVisitorRoute({ preferences: ["rare", "ancient"], duration: 90, language: "en", aiAvailable: false });
+  assert.equal(route.ok, true);
+  assert.equal(route.fallback, true);
+  assert.equal(route.estimatedDuration, 90);
+  assert.ok(route.stops.length > 0);
+  assert.ok(route.stops.every((stop) => stop.health === undefined && stop.status === undefined));
+});
+
+test("SS3 backend chatbot is multilingual and hides sensitive operations", () => {
+  const reply = answerVisitorChat({ question: "为什么隐藏珍稀物种位置？", language: "zh" });
+  assert.equal(reply.ok, true);
+  assert.equal(reply.intent, "rare_species_privacy");
+  assert.equal(reply.safety.rareSpeciesCoordinatesHidden, true);
+  assert.match(reply.answer, /珍稀物种/);
+});
+
+test("SS3 backend collection and scan analytics support visitor discovery tracking", () => {
+  resetVisitorBackendState();
+  const first = addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  const duplicate = addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  assert.equal(first.isNew, true);
+  assert.equal(duplicate.isNew, false);
+  assert.equal(getVisitorCollection({ sessionId: "visitor-a" }).collection.totalCollected, 1);
+
+  const scan = recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
+  assert.equal(scan.ok, true);
+  assert.equal(scan.collection.totalCollected, 2);
+  const analytics = getVisitorAnalytics();
+  assert.equal(analytics.totalScans, 1);
+  assert.equal(analytics.byZone.Tanaman, 1);
+});
+
+test("SS3 Express API exposes visitor backend endpoints", async () => {
+  resetVisitorBackendState();
+  const server = createApp().listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const health = await fetch(`${baseUrl}/api/health`).then((response) => response.json());
+    assert.equal(health.ok, true);
+    assert.ok(health.modules.some((moduleName) => moduleName.includes("M3-A")));
+
+    const tree = await fetch(`${baseUrl}/api/visitor/trees/TBJ-005?language=en&growthYears=10`).then((response) => response.json());
+    assert.equal(tree.ok, true);
+    assert.equal(tree.tree.status, undefined);
+    assert.equal(tree.privacy.protectedCoordinatesMasked, true);
+
+    const collection = await fetch(`${baseUrl}/api/visitor/collection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Visitor-Session": "api-test" },
+      body: JSON.stringify({ treeId: "TBJ-002", language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(collection.ok, true);
+    assert.equal(collection.collection.totalCollected, 1);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
 });
 
