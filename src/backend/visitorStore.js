@@ -95,3 +95,17 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
 
     async recordRoutePlan(plan) {
       await ensureLoaded();
+      const stored = {
+        routeId: nextId("VR", state.routePlans, "routeId"),
+        ...plan,
+        generatedAt: plan.generatedAt || new Date().toISOString(),
+      };
+      state.routePlans.unshift(stored);
+      await save();
+      return stored;
+    },
+
+    async getAnalytics() {
+      await ensureLoaded();
+      const byZone = state.scans.reduce((totals, event) => {
+        totals[event.zone] = (totals[event.zone] || 0) + 1;
