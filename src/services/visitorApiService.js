@@ -43,3 +43,23 @@ export async function recommendRouteFromBackend({ preferences, duration, languag
   try {
     const payload = await requestVisitorApi("/api/visitor/routes/recommend", {
       method: "POST",
+      body: { preferences, duration, language },
+    });
+    return {
+      ok: true,
+      ...payload,
+      route: payload.stops || [],
+      source: payload.fallback ? "backend-fallback" : "backend",
+    };
+  } catch {
+    const fallback = buildVisitorRoute(preferences, trees);
+    if (!fallback.ok) return { ...fallback, message: visitorText(language, "explore.validation"), source: "local" };
+    return { ...fallback, estimatedDuration: duration, source: "local" };
+  }
+}
+
+export async function askVisitorChatBackend({ question, language }) {
+  try {
+    return await requestVisitorApi("/api/visitor/chat", {
+      method: "POST",
+      body: { question, language },
