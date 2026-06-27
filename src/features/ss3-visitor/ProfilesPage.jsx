@@ -33,3 +33,15 @@ export default function ProfilesPage({ trees, language, onCollect }) {
             onClick={() => setSelected(tree)}
             photo={<TreePhoto src={profile.photoUrl} alt={profile.photoAlt} className="profile-card-photo" />}
             eyebrow={profile.zone}
+            title={profile.name}
+            subtitle={profile.scientificName}
+            meta={profile.description}
+            badges={profile.badges.slice(0, 2)}
+          />
+        );
+      })}</div>
+      {selected && <TreeIdCardModal tree={selected} language={language} onClose={() => setSelected(null)} onCollect={(tree) => { onCollect(tree); setSelected(null); }} />}
+    </VisitorPageShell>
+  );
+}
+
