@@ -48,3 +48,49 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
     sendResult(response, backend.getVisitorTreeIdCard(request.params.treeId, {
       language: request.query.language,
       growthYears: request.query.growthYears,
+    }));
+  });
+
+  app.post("/api/visitor/routes/recommend", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.recommendVisitorRoute({
+      ...request.body,
+      sessionId: sessionId(request),
+    }));
+  }));
+
+  app.post("/api/visitor/chat", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.answerVisitorChat({
+      ...request.body,
+      sessionId: sessionId(request),
+    }));
+  }));
+
+  app.get("/api/visitor/collection", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.getVisitorCollection({
+      sessionId: sessionId(request),
+      language: request.query.language,
+    }));
+  }));
+
+  app.post("/api/visitor/collection", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.addTreeToVisitorCollection({
+      sessionId: sessionId(request),
+      treeId: request.body.treeId,
+      language: request.body.language,
+    }));
+  }));
+
+  app.post("/api/visitor/scans", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.recordVisitorScan({
+      sessionId: sessionId(request),
+      treeId: request.body.treeId,
+      language: request.body.language,
+      source: request.body.source,
+    }));
+  }));
+
+  app.get("/api/visitor/analytics/scans", asyncRoute(async (_request, response) => {
+    response.json(await backend.getVisitorAnalytics());
+  }));
+
+  app.use((request, response) => {
