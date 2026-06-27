@@ -1,6 +1,6 @@
-import { MAINTENANCE_ALERTS, INITIAL_TASKS } from "../../src/data/tasks.js";
-import { TREES } from "../../src/data/trees.js";
-import { buildMaintenanceTask } from "../../src/services/adminService.js";
+import { MAINTENANCE_ALERTS, INITIAL_TASKS } from "../../frontend/src/data/tasks.js";
+import { TREES } from "../../frontend/src/data/trees.js";
+import { buildMaintenanceTask } from "../../frontend/src/services/adminService.js";
 import { pingDatabase, pool } from "../config/db.js";
 
 const ALLOWED_STATUS = new Set(["pending", "approved", "deferred", "rejected"]);

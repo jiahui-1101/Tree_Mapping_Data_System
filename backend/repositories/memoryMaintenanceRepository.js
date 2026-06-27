@@ -1,6 +1,6 @@
-import { MAINTENANCE_ALERTS, INITIAL_TASKS } from "../../src/data/tasks.js";
-import { TREES } from "../../src/data/trees.js";
-import { buildMaintenanceTask } from "../../src/services/adminService.js";
+import { MAINTENANCE_ALERTS, INITIAL_TASKS } from "../../frontend/src/data/tasks.js";
+import { TREES } from "../../frontend/src/data/trees.js";
+import { buildMaintenanceTask } from "../../frontend/src/services/adminService.js";
 
 let alerts = MAINTENANCE_ALERTS.map((alert) => ({ ...alert }));
 let tasks = INITIAL_TASKS.map((task) => ({ ...task }));

@@ -25,72 +25,72 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
   <tr>
     <td>Authentication and Role Access</td>
     <td>
-      <a href="src/features/auth/LoginPage.jsx">LoginPage.jsx</a><br>
-      <a href="src/services/mockAuthService.js">mockAuthService.js</a>
+      <a href="frontend/frontend/src/features/auth/LoginPage.jsx">LoginPage.jsx</a><br>
+      <a href="frontend/frontend/src/services/mockAuthService.js">mockAuthService.js</a>
     </td>
   </tr>
   <tr>
     <td>App Shell and Navigation</td>
     <td>
-      <a href="src/App.jsx">App.jsx</a><br>
-      <a href="src/config/navigation.js">navigation.js</a><br>
-      <a href="src/components/layout/AppShell.jsx">AppShell.jsx</a>
+      <a href="frontend/frontend/src/App.jsx">App.jsx</a><br>
+      <a href="frontend/frontend/src/config/navigation.js">navigation.js</a><br>
+      <a href="frontend/frontend/src/components/layout/AppShell.jsx">AppShell.jsx</a>
     </td>
   </tr>
   <tr>
     <td>SS1 - Tree Health Monitoring and Diagnostics</td>
     <td>
-      <a href="src/features/ss1-health/DashboardPage.jsx">DashboardPage.jsx</a><br>
-      <a href="src/features/ss1-health/InventoryPage.jsx">InventoryPage.jsx</a><br>
-      <a href="src/features/ss1-health/MaintenancePage.jsx">MaintenancePage.jsx</a>
+      <a href="frontend/frontend/src/features/ss1-health/DashboardPage.jsx">DashboardPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss1-health/InventoryPage.jsx">InventoryPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss1-health/MaintenancePage.jsx">MaintenancePage.jsx</a>
     </td>
   </tr>
   <tr>
     <td>SS2 - Scheduling and Field Task Management</td>
     <td>
-      <a href="src/features/ss2-field/SchedulePage.jsx">SchedulePage.jsx</a><br>
-      <a href="src/features/ss2-field/TaskTrackerPage.jsx">TaskTrackerPage.jsx</a><br>
-      <a href="src/features/ss2-field/RangerTasksPage.jsx">RangerTasksPage.jsx</a><br>
-      <a href="src/features/ss2-field/RangerReportsPage.jsx">RangerReportsPage.jsx</a><br>
-      <a href="src/features/ss2-field/RangerManagementPage.jsx">RangerManagementPage.jsx</a>
+      <a href="frontend/frontend/src/features/ss2-field/SchedulePage.jsx">SchedulePage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss2-field/TaskTrackerPage.jsx">TaskTrackerPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss2-field/RangerTasksPage.jsx">RangerTasksPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss2-field/RangerReportsPage.jsx">RangerReportsPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss2-field/RangerManagementPage.jsx">RangerManagementPage.jsx</a>
     </td>
   </tr>
   <tr>
     <td>SS3 - Visitor Engagement and Education</td>
     <td>
-      <a href="src/features/ss3-visitor/ExplorePage.jsx">ExplorePage.jsx</a><br>
-      <a href="src/features/ss3-visitor/ProfilesPage.jsx">ProfilesPage.jsx</a><br>
-      <a href="src/features/ss3-visitor/ChatPage.jsx">ChatPage.jsx</a><br>
-      <a href="src/features/ss3-visitor/CollectionPage.jsx">CollectionPage.jsx</a><br>
-      <a href="src/features/ss3-visitor/TreeIdCardModal.jsx">TreeIdCardModal.jsx</a>
+      <a href="frontend/frontend/src/features/ss3-visitor/ExplorePage.jsx">ExplorePage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss3-visitor/ProfilesPage.jsx">ProfilesPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss3-visitor/ChatPage.jsx">ChatPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss3-visitor/CollectionPage.jsx">CollectionPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss3-visitor/TreeIdCardModal.jsx">TreeIdCardModal.jsx</a>
     </td>
   </tr>
   <tr>
     <td>SS4 - Map, QR and Interactive Visualization</td>
     <td>
-      <a href="src/features/ss4-map/MapPage.jsx">MapPage.jsx</a><br>
-      <a href="src/features/ss4-map/SpatialPage.jsx">SpatialPage.jsx</a><br>
-      <a href="src/features/ss4-map/AuditPage.jsx">AuditPage.jsx</a><br>
-      <a href="src/components/map/GardenMap.jsx">GardenMap.jsx</a><br>
-      <a href="src/components/qr/QRPage.jsx">QRPage.jsx</a><br>
-      <a href="src/components/qr/QRScanner.jsx">QRScanner.jsx</a><br>
-      <a href="src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a>
+      <a href="frontend/frontend/src/features/ss4-map/MapPage.jsx">MapPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss4-map/SpatialPage.jsx">SpatialPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/ss4-map/AuditPage.jsx">AuditPage.jsx</a><br>
+      <a href="frontend/frontend/src/components/map/GardenMap.jsx">GardenMap.jsx</a><br>
+      <a href="frontend/frontend/src/components/qr/QRPage.jsx">QRPage.jsx</a><br>
+      <a href="frontend/frontend/src/components/qr/QRScanner.jsx">QRScanner.jsx</a><br>
+      <a href="frontend/frontend/src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a>
     </td>
   </tr>
   <tr>
     <td>IT Support Operations</td>
     <td>
-      <a href="src/features/it-support/ITDashboardPage.jsx">ITDashboardPage.jsx</a><br>
-      <a href="src/features/it-support/SystemMonitoringPage.jsx">SystemMonitoringPage.jsx</a><br>
-      <a href="src/features/it-support/UserAccessPage.jsx">UserAccessPage.jsx</a><br>
-      <a href="src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a>
+      <a href="frontend/frontend/src/features/it-support/ITDashboardPage.jsx">ITDashboardPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/it-support/SystemMonitoringPage.jsx">SystemMonitoringPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/it-support/UserAccessPage.jsx">UserAccessPage.jsx</a><br>
+      <a href="frontend/frontend/src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a>
     </td>
   </tr>
   <tr>
     <td>Mock Data and Services</td>
     <td>
-      <a href="src/data">src/data</a><br>
-      <a href="src/services">src/services</a>
+      <a href="frontend/frontend/src/data">frontend/src/data</a><br>
+      <a href="frontend/frontend/src/services">frontend/src/services</a>
     </td>
   </tr>
 </table>
@@ -184,7 +184,7 @@ backend/
   routes/           Shared API route dispatcher and module routes
   utils/            Shared backend HTTP helpers
   server.js         Shared backend server entry point
-src/
+frontend/src/
   app/              Shared frontend app wrapper helpers and page renderer
   components/       Shared layout, common UI, map, and QR components
   config/           Navigation and page metadata
