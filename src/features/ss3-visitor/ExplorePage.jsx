@@ -4,7 +4,7 @@ import GardenMap from "../../components/map/GardenMap.jsx";
 import { TBJ_MAP_FACTS, getVisitorZone } from "../../data/gardenMap.js";
 import { getPublicTreeCard } from "../../data/visitorTreeProfiles.js";
 import { ROLE } from "../../models.js";
-import { buildVisitorRoute } from "../../services/mockTreeService.js";
+import { recommendRouteFromBackend } from "../../services/visitorApiService.js";
 import { VISITOR_INTEREST_IDS, visitorText } from "../../services/visitorI18n.js";
 import { VisitorLanguageSwitch, VisitorPageShell, VisitorSectionHeader } from "../../components/common/VisitorUI.jsx";
 
@@ -13,11 +13,14 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
   const [routePlan, setRoutePlan] = useState(null);
   const [selectedZone, setSelectedZone] = useState(null);
   const [error, setError] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
   const [duration, setDuration] = useState(60);
   const t = (path, values) => visitorText(language, path, values);
   const toggle = (id) => setSelected((current) => current.includes(id) ? current.filter((item) => item !== id) : [...current, id]);
-  const generate = () => {
-    const result = buildVisitorRoute(selected, trees);
+  const generate = async () => {
+    setIsGenerating(true);
+    const result = await recommendRouteFromBackend({ preferences: selected, duration, language, trees });
+    setIsGenerating(false);
     if (!result.ok) return setError(t("explore.validation"));
     setRoutePlan({ ...result, estimatedDuration: duration }); setError("");
   };
@@ -104,7 +107,7 @@ export default function ExplorePage({ trees, language, onLanguage, onTreeClick, 
         <div className="duration-row premium-duration-row"><strong>{t("explore.duration")}</strong>{[45, 60, 90, 120].map((value) => <button className={duration === value ? "active" : ""} key={value} onClick={() => setDuration(value)}>{value} {t("explore.minutes")}</button>)}</div>
         {error && <p className="form-error visitor-error">{error}</p>}
         <div className="button-row">
-          <button className="button" onClick={generate}>{t("explore.generate")} →</button>
+          <button className="button" disabled={isGenerating} onClick={generate}>{isGenerating ? "..." : t("explore.generate")} →</button>
           <button className="button button-outline" onClick={() => { setRoutePlan(null); setError(""); }}>{t("explore.exploreFreely")}</button>
         </div>
       </section>

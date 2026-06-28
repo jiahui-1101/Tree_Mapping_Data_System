@@ -1,13 +1,22 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TreePhoto from "../../components/common/TreePhoto.jsx";
 import { VisitorPageShell, VisitorPhotoCard, VisitorSectionHeader } from "../../components/common/VisitorUI.jsx";
 import { getPublicTreeCard } from "../../data/visitorTreeProfiles.js";
+import { fetchVisitorProfiles } from "../../services/visitorApiService.js";
 import { visitorText } from "../../services/visitorI18n.js";
 import TreeIdCardModal from "./TreeIdCardModal.jsx";
 
 export default function ProfilesPage({ trees, language, onCollect }) {
   const [selected, setSelected] = useState(null);
+  const [profiles, setProfiles] = useState(() => trees.map((tree) => getPublicTreeCard(tree, language)));
   const t = (path) => visitorText(language, path);
+  useEffect(() => {
+    let active = true;
+    fetchVisitorProfiles({ language, trees }).then((result) => {
+      if (active) setProfiles(result.profiles);
+    });
+    return () => { active = false; };
+  }, [language, trees]);
   return (
     <VisitorPageShell className="profiles-premium">
       <VisitorSectionHeader
@@ -16,16 +25,16 @@ export default function ProfilesPage({ trees, language, onCollect }) {
         title={t("page.profiles")[0]}
         subtitle={t("profiles.herbariumSubtitle")}
       />
-      <div className="profile-grid premium-profile-grid">{trees.map((tree) => {
-        const profile = getPublicTreeCard(tree, language);
+      <div className="profile-grid premium-profile-grid">{profiles.map((profile) => {
+        const tree = trees.find((item) => item.id === profile.id) || profile;
         return (
           <VisitorPhotoCard
-            key={tree.id}
+            key={profile.id}
             onClick={() => setSelected(tree)}
             photo={<TreePhoto src={profile.photoUrl} alt={profile.photoAlt} className="profile-card-photo" />}
             eyebrow={profile.zone}
             title={profile.name}
-            subtitle={tree.scientificName}
+            subtitle={profile.scientificName}
             meta={profile.description}
             badges={profile.badges.slice(0, 2)}
           />

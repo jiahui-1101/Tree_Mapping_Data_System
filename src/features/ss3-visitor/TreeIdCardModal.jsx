@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import TreePhoto from "../../components/common/TreePhoto.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import { getPublicTreeCard, projectGrowth } from "../../data/visitorTreeProfiles.js";
+import { fetchVisitorTreeCard } from "../../services/visitorApiService.js";
 import { visitorText } from "../../services/visitorI18n.js";
 
 const GROWTH_YEARS = [5, 10, 25, 50];
@@ -23,10 +24,19 @@ function GrowthVisual({ profile, projection, confidence, t }) {
 export default function TreeIdCardModal({ tree, language, onClose, onCollect }) {
   const [mode, setMode] = useState("explorer");
   const [growth, setGrowth] = useState(10);
+  const [backendCard, setBackendCard] = useState(null);
   const t = (path, values) => visitorText(language, path, values);
-  const profile = getPublicTreeCard(tree, language);
-  const projection = projectGrowth(profile, growth);
+  const localProfile = getPublicTreeCard(tree, language);
+  const profile = backendCard?.tree || localProfile;
+  const projection = backendCard?.growthSimulation || projectGrowth(profile, growth);
   const confidence = Math.max(80, Math.round(96 - projection.years * 0.28));
+  useEffect(() => {
+    let active = true;
+    fetchVisitorTreeCard({ tree, language, growthYears: growth }).then((card) => {
+      if (active) setBackendCard(card);
+    });
+    return () => { active = false; };
+  }, [tree, language, growth]);
   return (
     <Modal title={t("profiles.treeIdCard", { name: profile.name })} onClose={onClose} wide>
       <div className="tree-id-premium">
