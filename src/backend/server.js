@@ -1,15 +1,19 @@
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { getBackendConfig } from "./backendConfig.js";
+import { createMaintenanceBackend } from "./maintenanceBackendService.js";
 import { createVisitorBackend } from "./visitorBackendService.js";
 
-export function createApp({ backend = createVisitorBackend() } = {}) {
+export function createApp({
+  backend = createVisitorBackend(),
+  maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
+} = {}) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
   app.use((request, response, next) => {
     response.setHeader("Access-Control-Allow-Origin", "*");
     response.setHeader("Access-Control-Allow-Headers", "Content-Type, X-Visitor-Session");
-    response.setHeader("Access-Control-Allow-Methods", "GET,POST,OPTIONS");
+    response.setHeader("Access-Control-Allow-Methods", "GET,POST,PATCH,OPTIONS");
     if (request.method === "OPTIONS") return response.sendStatus(204);
     return next();
   });
@@ -37,14 +41,63 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
     return true;
   };
 
-  app.get("/api/health", (_request, response) => {
+  app.get("/", (_request, response) => {
     response.json({
       ok: true,
-      service: "TBJ Visitor Engagement Backend",
-      subsystem: "SS3",
-      modules: ["M3-A Digital Tree ID Card", "M3-B AI Plant Chatbot", "M3-C Exploration Collection", "M3-D Preference Route Recommender", "M3-E Multilingual Interface"],
+      service: "Tree Mapping Data System Backend",
+      modules: {
+        visitor: ["/api/visitor/profiles", "/api/visitor/chat", "/api/visitor/routes/recommend"],
+        maintenance: ["/api/predictive-alerts", "/api/tasks", "POST /api/predictive-alerts/ALT-001/approve"],
+      },
     });
   });
+
+  app.get("/api/health", asyncRoute(async (_request, response) => {
+    response.json({
+      ok: true,
+      service: "Tree Mapping Data System Backend",
+      modules: [
+        "M1-C Predictive Maintenance Scheduler",
+        "M3-A Digital Tree ID Card",
+        "M3-B AI Plant Chatbot",
+        "M3-C Exploration Collection",
+        "M3-D Preference Route Recommender",
+        "M3-E Multilingual Interface",
+      ],
+      maintenance: await maintenanceBackend.health(),
+    });
+  }));
+
+  app.get("/api/predictive-alerts", asyncRoute(async (_request, response) => {
+    response.json({ ok: true, data: await maintenanceBackend.listAlerts() });
+  }));
+
+  app.get("/api/predictive-alerts/:alertId", asyncRoute(async (request, response) => {
+    const alert = await maintenanceBackend.findAlert(request.params.alertId);
+    if (!alert) return response.status(404).json({ ok: false, error: "ALERT_NOT_FOUND", message: "Predictive alert not found." });
+    return response.json({ ok: true, data: alert });
+  }));
+
+  app.post("/api/predictive-alerts/generate", asyncRoute(async (_request, response) => {
+    sendResult(response, await maintenanceBackend.generateAlertsFromTrees());
+  }));
+
+  app.patch("/api/predictive-alerts/:alertId/status", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["status"])) return;
+    sendResult(response, await maintenanceBackend.updateAlertStatus(request.params.alertId, request.body.status));
+  }));
+
+  app.post("/api/predictive-alerts/:alertId/approve", asyncRoute(async (request, response) => {
+    sendResult(response, await maintenanceBackend.approveAlert(request.params.alertId, request.body?.ranger || "Ahmad Razif"));
+  }));
+
+  app.get("/api/tasks", asyncRoute(async (_request, response) => {
+    response.json({ ok: true, data: await maintenanceBackend.listTasks() });
+  }));
+
+  app.post("/api/dev/reset", asyncRoute(async (_request, response) => {
+    sendResult(response, await maintenanceBackend.reset());
+  }));
 
   app.get("/api/visitor/profiles", (request, response) => {
     response.json({
@@ -137,7 +190,10 @@ export function createApp({ backend = createVisitorBackend() } = {}) {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const config = getBackendConfig();
-  createApp({ backend: createVisitorBackend({ config }) }).listen(config.port, () => {
-    console.log(`TBJ SS3 backend listening on http://localhost:${config.port}`);
+  createApp({
+    backend: createVisitorBackend({ config }),
+    maintenanceBackend: createMaintenanceBackend({ config }),
+  }).listen(config.port, () => {
+    console.log(`TBJ shared backend listening on http://localhost:${config.port}`);
   });
 }
