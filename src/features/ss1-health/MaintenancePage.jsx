@@ -3,14 +3,16 @@ import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { MAINTENANCE_ALERTS } from "../../data/tasks.js";
 import { buildMaintenanceTask } from "../../services/adminService.js";
+import { approveMaintenanceAlertBackend } from "../../services/maintenanceApiService.js";
 
 export default function MaintenancePage({ tasks = [], onAddTask, onNavigate, showToast }) {
   const [alerts, setAlerts] = useState(MAINTENANCE_ALERTS);
-  const act = (id, status) => {
+  const act = async (id, status) => {
     const alert = alerts.find((item) => item.id === id);
     setAlerts((current) => current.map((item) => item.id === id ? { ...item, status } : item));
     if (status === "approved" && alert) {
-      const task = onAddTask(buildMaintenanceTask(alert, "Ahmad Razif", tasks));
+      const backendResult = await approveMaintenanceAlertBackend({ alertId: id });
+      const task = onAddTask(backendResult?.task || buildMaintenanceTask(alert, "Ahmad Razif", tasks));
       showToast(`${task.id} created from predictive alert and synced to Ranger task bar.`);
       onNavigate?.("tasks");
       return;
