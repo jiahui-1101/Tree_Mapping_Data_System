@@ -232,7 +232,7 @@ export default function App() {
   switch (activePage) {
     case "dashboard": content = <DashboardPage {...pageProps} onNavigate={navigate} />; break;
     case "inventory": content = <InventoryPage {...pageProps} onAddTree={addTree} onArchiveTree={archiveTree} onUpdateTree={updateTree} />; break;
-    case "maintenance": content = <MaintenancePage {...pageProps} onAddTask={addTask} />; break;
+    case "maintenance": content = <MaintenancePage {...pageProps} onAddTask={addTask} onNavigate={navigate} />; break;
     case "schedule": content = <SchedulePage {...pageProps} onAddTask={addTask} />; break;
     case "rangers": content = <RangerManagementPage {...pageProps} />; break;
     case "tasks": content = <TaskTrackerPage {...pageProps} onUpdateTask={updateTask} />; break;

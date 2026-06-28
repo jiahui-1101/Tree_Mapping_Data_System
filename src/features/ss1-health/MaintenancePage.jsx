@@ -4,7 +4,7 @@ import StatusPill from "../../components/common/StatusPill.jsx";
 import { MAINTENANCE_ALERTS } from "../../data/tasks.js";
 import { buildMaintenanceTask } from "../../services/adminService.js";
 
-export default function MaintenancePage({ tasks = [], onAddTask, showToast }) {
+export default function MaintenancePage({ tasks = [], onAddTask, onNavigate, showToast }) {
   const [alerts, setAlerts] = useState(MAINTENANCE_ALERTS);
   const act = (id, status) => {
     const alert = alerts.find((item) => item.id === id);
@@ -12,6 +12,7 @@ export default function MaintenancePage({ tasks = [], onAddTask, showToast }) {
     if (status === "approved" && alert) {
       const task = onAddTask(buildMaintenanceTask(alert, "Ahmad Razif", tasks));
       showToast(`${task.id} created from predictive alert and synced to Ranger task bar.`);
+      onNavigate?.("tasks");
       return;
     }
     showToast(`Predictive alert ${status}. Audit event queued.`);
