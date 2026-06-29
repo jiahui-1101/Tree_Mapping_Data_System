@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell.jsx";
 import Toast from "./components/common/Toast.jsx";
 import QRScanner from "./components/qr/QRScanner.jsx";
@@ -34,6 +34,7 @@ import { ROLE } from "./models.js";
 import { canAccessPage } from "./services/mockAuthService.js";
 import { nextTaskId, updateTreeRecord } from "./services/adminService.js";
 import { createFieldReport } from "./services/rangerService.js";
+import { createFieldTaskBackend, fetchFieldBackendState, submitFieldReportBackend, updateFieldTaskStatusBackend } from "./services/fieldApiService.js";
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
 import { collectVisitorTreeBackend, recordVisitorScanBackend } from "./services/visitorApiService.js";
 import { visitorText } from "./services/visitorI18n.js";
@@ -83,6 +84,19 @@ export default function App() {
   const [scannedTree, setScannedTree] = useState(null);
   const [toast, setToast] = useState("");
   const showToast = useCallback((message) => setToast(message), []);
+
+  useEffect(() => {
+    if (!user) return;
+    let active = true;
+    fetchFieldBackendState().then((state) => {
+      if (!active || !state) return;
+      setTasks(state.tasks);
+      setFieldReports(state.reports);
+    });
+    return () => {
+      active = false;
+    };
+  }, [user]);
 
   const appendAudit = useCallback((entry) => {
     setAuditLogs((current) => [{
@@ -147,16 +161,29 @@ export default function App() {
         severity: report.observedStatus === "critical" ? "high" : "medium",
       });
       showToast(`${report.id} submitted. Report synced to admin dashboard.`);
+      void submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft }).then((result) => {
+        if (!result?.report) return;
+        setFieldReports(result.reports || ((current) => [result.report, ...current.filter((item) => item.id !== report.id)]));
+        if (result.tasks) setTasks(result.tasks);
+      });
       return report;
     }
     showToast(message);
     return null;
   };
 
-  const updateTask = (id, status) => setTasks((current) => current.map((task) => task.id === id ? { ...task, status } : task));
+  const updateTask = (id, status) => {
+    setTasks((current) => current.map((task) => task.id === id ? { ...task, status } : task));
+    void updateFieldTaskStatusBackend({ taskId: id, status }).then((result) => {
+      if (result?.tasks) setTasks(result.tasks);
+    });
+  };
   const addTask = (taskDraft) => {
     const task = { ...taskDraft, id: taskDraft.id || nextTaskId(tasks), status: taskDraft.status || "pending" };
     setTasks((current) => [...current, task]);
+    void createFieldTaskBackend(task).then((result) => {
+      if (result?.tasks) setTasks(result.tasks);
+    });
     return task;
   };
   const updateTree = (id, patch) => {
@@ -263,4 +290,3 @@ export default function App() {
     </AppShell>
   );
 }
-
