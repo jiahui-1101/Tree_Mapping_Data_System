@@ -158,6 +158,19 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
       return { ok: true, session };
     },
 
+    async validateVisitorSession(sessionId) {
+      const normalizedSessionId = normalizeSessionId(sessionId);
+      if (normalizedSessionId === DEFAULT_SESSION_ID) {
+        return {
+          ok: false,
+          status: 401,
+          error: "VISITOR_SESSION_REQUIRED",
+          message: "Create a visitor session before using personalized visitor APIs.",
+        };
+      }
+      return { ok: true, session: { sessionId: normalizedSessionId } };
+    },
+
     listVisitorTreeProfiles({ language = "en", query = "", zone = "all" } = {}) {
       const selectedLanguage = normalizeLanguage(language);
       const needle = String(query || "").trim().toLowerCase();
