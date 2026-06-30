@@ -11,7 +11,7 @@ import { analyzeFieldPhoto, buildReportAnalysis, createFieldReport, filterFieldR
 import { addCollectedTree, addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "../src/services/storageService.js";
 import { TREES } from "../src/data/trees.js";
 import { INITIAL_FIELD_REPORTS } from "../src/data/fieldReports.js";
-import { SERVICE_LOGS, SYSTEM_SERVICES } from "../src/data/itSupport.js";
+import { ACCESS_USERS, SERVICE_LOGS, SYSTEM_SERVICES } from "../src/data/itSupport.js";
 import { INITIAL_TASKS } from "../src/data/tasks.js";
 import { visitorText, visitorTreeDescription } from "../src/services/visitorI18n.js";
 import { MAP_ZONES, TBJ_COLLECTION_SUMMARIES, TBJ_MAP_FACTS, TBJ_STAKEHOLDER_PLOTS, countStakeholderRecords, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotInventory, getStakeholderPlotsByZone, getStakeholderSourceGroup, getVisitorZone, percentToWorldPosition, worldToPercentPosition } from "../src/data/gardenMap.js";
@@ -20,6 +20,7 @@ import { createApp } from "../src/backend/server.js";
 import { createVisitorBackend, addTreeToVisitorCollection, answerVisitorChat, getSs4QrScanEvents, getVisitorAnalytics, getVisitorCollection, getVisitorTreeIdCard, recommendVisitorRoute, recordVisitorScan, resetVisitorBackendState } from "../src/backend/visitorBackendService.js";
 import { createVisitorStore } from "../src/backend/visitorStore.js";
 import { createSs4Backend, createSs4Store } from "../src/backend/ss4BackendService.js";
+import { createItSupportBackend, createItSupportStore } from "../src/backend/itSupportBackendService.js";
 
 function createStorage() {
   const values = new Map();
@@ -595,5 +596,79 @@ test("SS4 database schema documents map, QR, spatial, heatmap and security table
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_heatmap_aggregate/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS audit_logs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS security_alerts/);
+});
+
+test("IT Support backend returns dashboard and service telemetry", async () => {
+  const backend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const dashboard = await backend.getDashboard();
+  assert.equal(dashboard.ok, true);
+  assert.equal(dashboard.data.services.length, SYSTEM_SERVICES.length);
+  assert.ok(dashboard.data.degradedServices >= 1);
+  const health = await backend.health();
+  assert.equal(health.ok, true);
+  assert.equal(health.users, ACCESS_USERS.length);
+});
+
+test("IT Support backend performs service, access and ticket actions with audit trail", async () => {
+  const backend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const restart = await backend.runServiceAction({ serviceId: "qr-service", action: "restart", actor: "it001" });
+  assert.equal(restart.ok, true);
+  assert.equal(restart.service.status, "online");
+  const access = await backend.updateUserAccess({ userId: "RGR004", action: "unlock", actor: "it001" });
+  assert.equal(access.ok, true);
+  assert.equal(access.user.status, "active");
+  const ticket = await backend.updateTicket({ ticketId: "INC-1042", patch: { status: "resolved", owner: "Nur Izzati" }, actor: "it001" });
+  assert.equal(ticket.ok, true);
+  assert.equal(ticket.ticket.status, "resolved");
+  const created = await backend.createTicket({ title: "Protected map access review", priority: "high", category: "Security" });
+  assert.equal(created.ok, true);
+  assert.match(created.ticket.id, /^INC-/);
+});
+
+test("IT Support Express API exposes dashboard, services, users and tickets", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const itSupportBackend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const server = createApp({ backend, itSupportBackend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const dashboard = await fetch(`${baseUrl}/api/it-support/dashboard`).then((response) => response.json());
+    assert.equal(dashboard.ok, true);
+    assert.ok(dashboard.data.services.length > 0);
+
+    const action = await fetch(`${baseUrl}/api/it-support/services/qr-service/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "restart", actor: "it001" }),
+    }).then((response) => response.json());
+    assert.equal(action.ok, true);
+    assert.equal(action.service.status, "online");
+
+    const user = await fetch(`${baseUrl}/api/it-support/users/RGR004/access`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "unlock", actor: "it001" }),
+    }).then((response) => response.json());
+    assert.equal(user.ok, true);
+    assert.equal(user.user.status, "active");
+
+    const ticket = await fetch(`${baseUrl}/api/it-support/tickets/INC-1042`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "resolved", owner: "Nur Izzati" }),
+    }).then((response) => response.json());
+    assert.equal(ticket.ok, true);
+    assert.equal(ticket.ticket.status, "resolved");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("IT Support database schema documents operations tables", () => {
+  const schema = readFileSync(new URL("../docs/database/it_support_schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_system_services/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_access_users/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_support_tickets/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_service_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_audit_events/);
 });
 
