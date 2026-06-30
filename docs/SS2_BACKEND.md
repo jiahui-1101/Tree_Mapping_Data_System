@@ -107,7 +107,5 @@ These are documented here intentionally so reviewers can see what is real backen
 
 - **Ranger login is a frontend mock.** `LoginPage.jsx` authenticates against `mockAuthService.js` (a plain-string comparison against `config/demoUsers.js`), not against the backend. The data dictionary's `pin_hash`, `failed_attempts`, and `locked_until` fields are not yet wired to a real `/api/ss2/auth/login` endpoint.
 - **GPS capture is simulated.** Field reports store a fixed string (`"Mock GPS: Ranger patrol point captured"`) rather than reading `navigator.geolocation` or validating distance against the tree's coordinates.
-- **No request authentication on `/api/ss2/*` routes.** Unlike the visitor module's session-token check, these endpoints do not currently verify which ranger/admin is making the call.
-- **`memory` and `mysql` modes are not behaviorally identical.** `generateSchedule` returns a `NO_ACTIVE_RANGERS` error in MySQL mode when there are no active rangers, but silently produces a 0-assignment schedule in memory mode.
 
 These items are intentionally scoped as future work and do not affect the core backend data flow described above (Schedule → Task → Notification → Report → Task completion), which is fully implemented in both storage modes.
