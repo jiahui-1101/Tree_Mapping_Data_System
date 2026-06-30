@@ -1,4 +1,3 @@
-import { INITIAL_FIELD_REPORTS } from "../data/fieldReports.js";
 import { DIAGNOSES } from "../data/diagnoses.js";
 
 export function filterRangerTasks(tasks = [], rangerName = "", { query = "", status = "all", priority = "all", source = "all" } = {}) {
@@ -13,7 +12,7 @@ export function filterRangerTasks(tasks = [], rangerName = "", { query = "", sta
   });
 }
 
-export function filterFieldReports(reports = INITIAL_FIELD_REPORTS, rangerName = "", { query = "", observedStatus = "all", reportMode = "all", syncStatus = "all" } = {}) {
+export function filterFieldReports(reports = [], rangerName = "", { query = "", observedStatus = "all", reportMode = "all", syncStatus = "all" } = {}) {
   const needle = query.trim().toLowerCase();
   return reports.filter((report) => {
     if (rangerName && report.ranger !== rangerName) return false;
@@ -26,7 +25,11 @@ export function filterFieldReports(reports = INITIAL_FIELD_REPORTS, rangerName =
   });
 }
 
-export function findLinkedTaskForTree(tasks = [], treeId = "", rangerName = "") {
+export function findLinkedTaskForTree(tasks = [], treeId = "", rangerName = "", taskId = "") {
+  if (taskId) {
+    const direct = tasks.find((task) => task.id === taskId && (!rangerName || task.ranger === rangerName));
+    if (direct) return direct;
+  }
   return tasks.find((task) => task.treeId === treeId && (!rangerName || task.ranger === rangerName) && task.status !== "completed") || null;
 }
 
@@ -93,8 +96,8 @@ export function buildReportAnalysis({ reportMode = "manual", manualCause = "", m
   };
 }
 
-export function createFieldReport({ draft = {}, tree, rangerName = "", tasks = [], existingReports = INITIAL_FIELD_REPORTS } = {}) {
-  const linkedTask = findLinkedTaskForTree(tasks, tree?.id || draft.treeId, rangerName);
+export function createFieldReport({ draft = {}, tree, rangerName = "", tasks = [], existingReports = [] } = {}) {
+  const linkedTask = findLinkedTaskForTree(tasks, tree?.id || draft.treeId, rangerName, draft.taskId);
   const reportMode = draft.reportMode === "ai" ? "ai" : "manual";
   const observedStatus = draft.observedStatus || "monitor";
   const photoName = reportMode === "ai" ? draft.photoName || "No photo attached" : "";
@@ -132,4 +135,3 @@ export function createFieldReport({ draft = {}, tree, rangerName = "", tasks = [
     analysis,
   };
 }
-

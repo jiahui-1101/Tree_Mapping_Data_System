@@ -1,6 +1,7 @@
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { getBackendConfig } from "./backendConfig.js";
+import { createFieldBackend } from "./fieldBackendService.js";
 import { createItSupportBackend } from "./itSupportBackendService.js";
 import { createMaintenanceBackend } from "./maintenanceBackendService.js";
 import { createSs4Backend } from "./ss4BackendService.js";
@@ -8,6 +9,7 @@ import { createVisitorBackend } from "./visitorBackendService.js";
 
 export function createApp({
   backend = createVisitorBackend(),
+  fieldBackend = createFieldBackend({ config: { ...getBackendConfig(), fieldStore: "memory" } }),
   maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
   ss4Backend = createSs4Backend({ config: getBackendConfig() }),
   itSupportBackend = createItSupportBackend({ config: getBackendConfig() }),
@@ -56,6 +58,7 @@ export function createApp({
       ok: true,
       service: "Tree Mapping Data System Backend",
       modules: {
+        field: ["/api/ss2/tasks", "/api/ss2/reports", "/api/ss2/rangers"],
         visitor: ["/api/visitor/profiles", "/api/visitor/chat", "/api/visitor/routes/recommend"],
         maintenance: ["/api/predictive-alerts", "/api/tasks", "POST /api/predictive-alerts/ALT-001/approve"],
         ss4: ["/api/ss4/map", "/api/ss4/qr-scans", "/api/ss4/spatial/simulate", "/api/ss4/audit-logs"],
@@ -70,16 +73,85 @@ export function createApp({
       service: "Tree Mapping Data System Backend",
       modules: [
         "M1-C Predictive Maintenance Scheduler",
+        "SS2 Scheduling & Field Task Management",
         "M3-A Digital Tree ID Card",
         "M3-B AI Plant Chatbot",
         "M3-C Exploration Collection",
         "M3-D Preference Route Recommender",
         "M3-E Multilingual Interface",
       ],
+      field: await fieldBackend.health(),
       maintenance: await maintenanceBackend.health(),
       ss4: await ss4Backend.health(),
       itSupport: await itSupportBackend.health(),
     });
+  }));
+
+  app.get("/api/ss2/dashboard", asyncRoute(async (_request, response) => {
+    response.json(await fieldBackend.getDashboard());
+  }));
+
+  app.get("/api/ss2/rangers", asyncRoute(async (request, response) => {
+    response.json({ ok: true, data: await fieldBackend.listRangers({ status: request.query.status || "all" }) });
+  }));
+
+  app.post("/api/ss2/rangers", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["name"])) return;
+    sendResult(response, await fieldBackend.upsertRanger(request.body));
+  }));
+
+  app.get("/api/ss2/schedules/current", asyncRoute(async (_request, response) => {
+    sendResult(response, await fieldBackend.getCurrentSchedule());
+  }));
+
+  app.post("/api/ss2/schedules/generate", asyncRoute(async (request, response) => {
+    sendResult(response, await fieldBackend.generateSchedule(request.body || {}));
+  }));
+
+  app.patch("/api/ss2/schedule-assignments/:assignmentId", asyncRoute(async (request, response) => {
+    sendResult(response, await fieldBackend.updateScheduleAssignment(request.params.assignmentId, request.body || {}));
+  }));
+
+  app.post("/api/ss2/schedules/:scheduleId/publish", asyncRoute(async (request, response) => {
+    sendResult(response, await fieldBackend.publishSchedule(request.params.scheduleId, request.body || {}));
+  }));
+
+  app.get("/api/ss2/notifications", asyncRoute(async (request, response) => {
+    response.json({ ok: true, data: await fieldBackend.listNotifications({ ranger: request.query.ranger || "" }) });
+  }));
+
+  app.get("/api/ss2/tasks", asyncRoute(async (request, response) => {
+    response.json({ ok: true, data: await fieldBackend.listTasks(request.query) });
+  }));
+
+  app.get("/api/ss2/tasks/:taskId", asyncRoute(async (request, response) => {
+    const task = await fieldBackend.findTask(request.params.taskId);
+    if (!task) return response.status(404).json({ ok: false, error: "TASK_NOT_FOUND", message: "Field task not found." });
+    return response.json({ ok: true, data: task });
+  }));
+
+  app.post("/api/ss2/tasks", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["title", "ranger"])) return;
+    sendResult(response, await fieldBackend.createTask(request.body));
+  }));
+
+  app.patch("/api/ss2/tasks/:taskId/status", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["status"])) return;
+    sendResult(response, await fieldBackend.updateTaskStatus(request.params.taskId, request.body.status));
+  }));
+
+  app.get("/api/ss2/reports", asyncRoute(async (request, response) => {
+    response.json({ ok: true, data: await fieldBackend.listReports(request.query) });
+  }));
+
+  app.post("/api/ss2/reports", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["treeId", "rangerName", "draft"])) return;
+    sendResult(response, await fieldBackend.createReport(request.body));
+  }));
+
+  app.post("/api/ss2/photo-analysis", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["treeId", "photoName"])) return;
+    sendResult(response, await fieldBackend.analyzePhoto(request.body));
   }));
 
   app.get("/api/predictive-alerts", asyncRoute(async (_request, response) => {
@@ -320,6 +392,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const config = getBackendConfig();
   createApp({
     backend: createVisitorBackend({ config }),
+    fieldBackend: createFieldBackend({ config }),
     maintenanceBackend: createMaintenanceBackend({ config }),
     ss4Backend: createSs4Backend({ config }),
     itSupportBackend: createItSupportBackend({ config }),

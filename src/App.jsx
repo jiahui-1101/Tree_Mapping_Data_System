@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import AppShell from "./components/layout/AppShell.jsx";
 import Toast from "./components/common/Toast.jsx";
 import QRScanner from "./components/qr/QRScanner.jsx";
@@ -26,14 +26,13 @@ import MapPage from "./features/ss4-map/MapPage.jsx";
 import SpatialPage from "./features/ss4-map/SpatialPage.jsx";
 import { DEFAULT_PAGE } from "./config/navigation.js";
 import { AUDIT_LOGS } from "./data/auditLogs.js";
-import { INITIAL_FIELD_REPORTS } from "./data/fieldReports.js";
 import { QRCODES, QR_SCAN_EVENTS, SPATIAL_PLANNING_RECORDS, VISITOR_HEATMAP_AGGREGATES } from "./data/ss4Operations.js";
-import { INITIAL_TASKS } from "./data/tasks.js";
 import { TREES } from "./data/trees.js";
 import { ROLE } from "./models.js";
 import { canAccessPage } from "./services/mockAuthService.js";
 import { nextTaskId, updateTreeRecord } from "./services/adminService.js";
 import { createFieldReport } from "./services/rangerService.js";
+import { createFieldTaskBackend, fetchFieldBackendState, submitFieldReportBackend, updateFieldTaskStatusBackend } from "./services/fieldApiService.js";
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
 import { collectVisitorTreeBackend, recordVisitorScanBackend } from "./services/visitorApiService.js";
 import { visitorText } from "./services/visitorI18n.js";
@@ -45,6 +44,24 @@ const ROLE_LABEL = {
   [ROLE.VISITOR]: "Visitor",
   [ROLE.IT_SUPPORT]: "IT Support",
 };
+const AUTH_STORAGE_KEY = "tbj.currentUser";
+const FIELD_SYNC_INTERVAL_MS = 5000;
+
+function loadSavedUser() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+  } catch {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
+function saveUserSession(user) {
+  if (typeof window === "undefined") return;
+  if (user) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  else window.localStorage.removeItem(AUTH_STORAGE_KEY);
+}
 
 function nowLabel() {
   return "Just now";
@@ -68,11 +85,16 @@ function getQrForInput(rawValue, qrCodes = []) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [activePage, setActivePage] = useState("dashboard");
+  const [user, setUser] = useState(loadSavedUser);
+  const [activePage, setActivePage] = useState(() => {
+    const savedUser = loadSavedUser();
+    return savedUser ? DEFAULT_PAGE[savedUser.role] : "dashboard";
+  });
   const [trees, setTrees] = useState(TREES);
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
-  const [fieldReports, setFieldReports] = useState(INITIAL_FIELD_REPORTS);
+  const [tasks, setTasks] = useState([]);
+  const [fieldReports, setFieldReports] = useState([]);
+  const [rangers, setRangers] = useState([]);
+  const [fieldSchedule, setFieldSchedule] = useState(null);
   const [qrCodes, setQrCodes] = useState(QRCODES);
   const [qrScanEvents, setQrScanEvents] = useState(QR_SCAN_EVENTS);
   const [spatialPlanningRecords, setSpatialPlanningRecords] = useState(SPATIAL_PLANNING_RECORDS);
@@ -84,6 +106,49 @@ export default function App() {
   const [scannedTree, setScannedTree] = useState(null);
   const [toast, setToast] = useState("");
   const showToast = useCallback((message) => setToast(message), []);
+
+  const syncFieldBackendState = useCallback(() => {
+    let active = true;
+    const request = fetchFieldBackendState().then((state) => {
+      if (!active || !state) return;
+      setTasks(state.tasks);
+      setFieldReports(state.reports);
+      setRangers(state.rangers);
+      setFieldSchedule(state.schedule);
+    });
+    return { request, cancel: () => { active = false; } };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const sync = syncFieldBackendState();
+    const intervalId = window.setInterval(() => {
+      syncFieldBackendState();
+    }, FIELD_SYNC_INTERVAL_MS);
+    return () => {
+      sync.cancel();
+      window.clearInterval(intervalId);
+    };
+  }, [syncFieldBackendState, user]);
+
+  const handleLogin = (nextUser) => {
+    saveUserSession(nextUser);
+    setUser(nextUser);
+    setActivePage(DEFAULT_PAGE[nextUser.role]);
+    setAuditLogs((current) => [{
+      time: nowLabel(),
+      type: "login",
+      actor: nextUser.name,
+      role: ROLE_LABEL[nextUser.role],
+      event: `Signed in as ${ROLE_LABEL[nextUser.role]}`,
+      severity: "low",
+    }, ...current]);
+  };
+
+  const handleLogout = () => {
+    saveUserSession(null);
+    setUser(null);
+  };
 
   const appendAudit = useCallback((entry) => {
     setAuditLogs((current) => [{
@@ -97,18 +162,7 @@ export default function App() {
   }, [user]);
 
   if (!user) {
-    return <LoginPage onLogin={(nextUser) => {
-      setUser(nextUser);
-      setActivePage(DEFAULT_PAGE[nextUser.role]);
-      setAuditLogs((current) => [{
-        time: nowLabel(),
-        type: "login",
-        actor: nextUser.name,
-        role: ROLE_LABEL[nextUser.role],
-        event: `Signed in as ${ROLE_LABEL[nextUser.role]}`,
-        severity: "low",
-      }, ...current]);
-    }} />;
+    return <LoginPage onLogin={handleLogin} />;
   }
 
   const navigate = (page) => {
@@ -148,16 +202,63 @@ export default function App() {
         severity: report.observedStatus === "critical" ? "high" : "medium",
       });
       showToast(`${report.id} submitted. Report synced to admin dashboard.`);
+      void submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft }).then((result) => {
+        if (!result?.report) return;
+        setFieldReports(result.reports || ((current) => [result.report, ...current.filter((item) => item.id !== report.id)]));
+        if (result.tasks) setTasks(result.tasks);
+      });
       return report;
     }
     showToast(message);
     return null;
   };
 
-  const updateTask = (id, status) => setTasks((current) => current.map((task) => task.id === id ? { ...task, status } : task));
+  const updateTask = (id, status) => {
+    setTasks((current) => current.map((task) => task.id === id ? { ...task, status } : task));
+    void updateFieldTaskStatusBackend({ taskId: id, status }).then((result) => {
+      if (result?.tasks) setTasks(result.tasks);
+    });
+  };
+  const submitTaskEvidence = (task, draft) => {
+    const tree = trees.find((item) => item.id === draft.treeId);
+    if (!tree) {
+      showToast("Select a valid tree before completing this task.");
+      return null;
+    }
+    const reportDraft = { ...draft, taskId: task.id, notes: draft.notes || `Evidence submitted for ${task.id}.` };
+    const report = createFieldReport({ draft: reportDraft, tree, rangerName: user.name, tasks, existingReports: fieldReports });
+    setFieldReports((current) => [report, ...current]);
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: "completed", completedAt: new Date().toISOString() } : item));
+    setTrees((current) => current.map((item) => item.id === report.treeId ? {
+      ...item,
+      status: report.observedStatus,
+      health: report.observedStatus === "critical" ? 38 : report.observedStatus === "monitor" ? 68 : 94,
+    } : item));
+    appendAudit({
+      type: "edit",
+      event: `${report.id} submitted as completion evidence for ${task.id}`,
+      severity: report.observedStatus === "critical" ? "high" : "medium",
+    });
+    void submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft }).then((result) => {
+      if (!result?.report) return;
+      setFieldReports(result.reports || ((current) => [result.report, ...current.filter((item) => item.id !== report.id)]));
+      if (result.tasks) setTasks(result.tasks);
+    });
+    showToast(`${report.id} submitted. ${task.id} completed with evidence.`);
+    return report;
+  };
+  const syncFieldState = (payload = {}) => {
+    if (payload.tasks) setTasks(payload.tasks);
+    if (payload.reports) setFieldReports(payload.reports);
+    if (payload.rangers) setRangers(payload.rangers);
+    if (payload.schedule !== undefined) setFieldSchedule(payload.schedule);
+  };
   const addTask = (taskDraft) => {
     const task = { ...taskDraft, id: taskDraft.id || nextTaskId(tasks), status: taskDraft.status || "pending" };
     setTasks((current) => [...current, task]);
+    void createFieldTaskBackend(task).then((result) => {
+      if (result?.tasks) setTasks(result.tasks);
+    });
     return task;
   };
   const updateTree = (id, patch) => {
@@ -235,7 +336,7 @@ export default function App() {
     setLanguage(next);
   };
 
-  const pageProps = { role: user.role, user, trees, tasks, fieldReports, qrCodes, qrScanEvents, spatialPlanningRecords, visitorHeatmapAggregates, auditLogs, language, showToast };
+  const pageProps = { role: user.role, user, trees, tasks, fieldReports, rangers, fieldSchedule, qrCodes, qrScanEvents, spatialPlanningRecords, visitorHeatmapAggregates, auditLogs, language, showToast, onSyncFieldState: syncFieldState };
   let content;
   switch (activePage) {
     case "dashboard": content = <DashboardPage {...pageProps} onNavigate={navigate} />; break;
@@ -244,7 +345,7 @@ export default function App() {
     case "schedule": content = <SchedulePage {...pageProps} onAddTask={addTask} />; break;
     case "rangers": content = <RangerManagementPage {...pageProps} />; break;
     case "tasks": content = <TaskTrackerPage {...pageProps} onUpdateTask={updateTask} />; break;
-    case "ranger-tasks": content = <RangerTasksPage {...pageProps} onUpdateTask={updateTask} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "ranger-tasks": content = <RangerTasksPage {...pageProps} onUpdateTask={updateTask} onSubmitTaskEvidence={submitTaskEvidence} onOpenScanner={() => setScannerOpen(true)} />; break;
     case "ranger-reports": content = <RangerReportsPage {...pageProps} />; break;
     case "qr": content = <QRPage role={user.role} language={language} onOpenScanner={() => setScannerOpen(true)} />; break;
     case "map": content = <MapPage {...pageProps} onOpenScanner={() => setScannerOpen(true)} />; break;
@@ -262,7 +363,7 @@ export default function App() {
   }
 
   return (
-    <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={() => setUser(null)}>
+    <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={handleLogout}>
       {content}
       {scannerOpen && <QRScanner role={user.role} trees={trees} qrCodes={qrCodes} language={language} onClose={() => setScannerOpen(false)} onComplete={completeScan} onScanEvent={recordQrScan} />}
       {scannedTree && user.role === ROLE.VISITOR && <TreeIdCardModal tree={scannedTree} language={language} onClose={() => setScannedTree(null)} onCollect={(tree) => { collect(tree); setScannedTree(null); }} />}
@@ -271,4 +372,3 @@ export default function App() {
     </AppShell>
   );
 }
-

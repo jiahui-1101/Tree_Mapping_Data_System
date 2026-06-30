@@ -32,6 +32,7 @@ export function getBackendConfig(env = process.env) {
     openaiApiKey: env.OPENAI_API_KEY || "",
     openaiModel: env.OPENAI_MODEL || "gpt-4o-mini",
     maintenanceStore: (env.M1C_MAINTENANCE_STORE || env.BACKEND_STORE || "memory").toLowerCase(),
+    fieldStore: (env.SS2_FIELD_STORE || env.BACKEND_STORE || "memory").toLowerCase(),
     maintenanceDatabase: {
       host: env.DB_HOST || "127.0.0.1",
       port: Number(env.DB_PORT || 3306),
@@ -61,4 +62,3 @@ export function getBackendConfig(env = process.env) {
     },
   };
 }
-
