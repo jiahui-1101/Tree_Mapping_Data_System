@@ -2,11 +2,13 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import { getBackendConfig } from "./backendConfig.js";
 import { createMaintenanceBackend } from "./maintenanceBackendService.js";
+import { createSs4Backend } from "./ss4BackendService.js";
 import { createVisitorBackend } from "./visitorBackendService.js";
 
 export function createApp({
   backend = createVisitorBackend(),
   maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
+  ss4Backend = createSs4Backend({ config: getBackendConfig() }),
 } = {}) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
@@ -48,6 +50,7 @@ export function createApp({
       modules: {
         visitor: ["/api/visitor/profiles", "/api/visitor/chat", "/api/visitor/routes/recommend"],
         maintenance: ["/api/predictive-alerts", "/api/tasks", "POST /api/predictive-alerts/ALT-001/approve"],
+        ss4: ["/api/ss4/map", "/api/ss4/qr-scans", "/api/ss4/spatial/simulate", "/api/ss4/audit-logs"],
       },
     });
   });
@@ -65,6 +68,7 @@ export function createApp({
         "M3-E Multilingual Interface",
       ],
       maintenance: await maintenanceBackend.health(),
+      ss4: await ss4Backend.health(),
     });
   }));
 
@@ -173,6 +177,53 @@ export function createApp({
     response.json(await backend.getSs4QrScanEvents());
   }));
 
+  app.get("/api/ss4/map", asyncRoute(async (request, response) => {
+    response.json(await ss4Backend.getMapPayload({ role: request.query.role }));
+  }));
+
+  app.get("/api/ss4/layers", (request, response) => {
+    response.json(ss4Backend.getLayerConfig({ role: request.query.role }));
+  });
+
+  app.get("/api/ss4/qr-codes", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.listQrCodes());
+  }));
+
+  app.get("/api/ss4/qr-scans", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.listQrScanEvents());
+  }));
+
+  app.post("/api/ss4/qr-scans", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["role"])) return;
+    sendResult(response, await ss4Backend.recordQrScan(request.body));
+  }));
+
+  app.post("/api/ss4/spatial/simulate", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["point", "species", "targetZone"])) return;
+    sendResult(response, await ss4Backend.simulateSpatialPlan(request.body));
+  }));
+
+  app.post("/api/ss4/spatial/confirm", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["point", "species", "targetZone"])) return;
+    sendResult(response, await ss4Backend.confirmSpatialPlan(request.body));
+  }));
+
+  app.get("/api/ss4/spatial/plans", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.listSpatialPlans());
+  }));
+
+  app.get("/api/ss4/analytics/heatmap", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.getVisitorHeatmap());
+  }));
+
+  app.get("/api/ss4/audit-logs", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.getAuditLogs());
+  }));
+
+  app.get("/api/ss4/security-alerts", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.getSecurityAlerts());
+  }));
+
   app.use((request, response) => {
     response.status(404).json({ ok: false, error: "NOT_FOUND", message: `No backend route for ${request.method} ${request.path}` });
   });
@@ -193,6 +244,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   createApp({
     backend: createVisitorBackend({ config }),
     maintenanceBackend: createMaintenanceBackend({ config }),
+    ss4Backend: createSs4Backend({ config }),
   }).listen(config.port, () => {
     console.log(`TBJ shared backend listening on http://localhost:${config.port}`);
   });

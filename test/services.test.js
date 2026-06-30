@@ -19,6 +19,7 @@ import { getPublicTreeCard, projectGrowth } from "../src/data/visitorTreeProfile
 import { createApp } from "../src/backend/server.js";
 import { createVisitorBackend, addTreeToVisitorCollection, answerVisitorChat, getSs4QrScanEvents, getVisitorAnalytics, getVisitorCollection, getVisitorTreeIdCard, recommendVisitorRoute, recordVisitorScan, resetVisitorBackendState } from "../src/backend/visitorBackendService.js";
 import { createVisitorStore } from "../src/backend/visitorStore.js";
+import { createSs4Backend, createSs4Store } from "../src/backend/ss4BackendService.js";
 
 function createStorage() {
   const values = new Map();
@@ -476,5 +477,102 @@ test("SS3 database schema documents visitor integration tables", () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_scan_events/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_chat_logs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_route_plans/);
+});
+
+test("SS4 backend returns official map payload with role-safe tree coordinates", async () => {
+  const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const adminMap = await backend.getMapPayload({ role: ROLE.ADMIN });
+  const visitorMap = await backend.getMapPayload({ role: ROLE.VISITOR });
+  assert.equal(adminMap.ok, true);
+  assert.equal(adminMap.facts.areaAcres, 245.04);
+  assert.ok(adminMap.zones.some((zone) => zone.id === "arboretum"));
+  assert.ok(adminMap.landmarks.some((landmark) => landmark.id === "bukit-besi"));
+  assert.ok(adminMap.sourceLinks.jln.includes("jln.gov.my"));
+  assert.ok(adminMap.layerConfig.some((layer) => layer.layerId === "visitors"));
+  assert.ok(!visitorMap.layerConfig.some((layer) => layer.layerId === "visitors"));
+  assert.equal(visitorMap.trees.find((tree) => tree.id === "TBJ-005").x, null);
+});
+
+test("SS4 backend routes QR scans by role and creates security alerts for invalid QR", async () => {
+  const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const visitorScan = await backend.recordQrScan({ rawId: "QR-TBJ-002", actorId: "visitor-session", role: ROLE.VISITOR });
+  assert.equal(visitorScan.ok, true);
+  assert.equal(visitorScan.event.routedTo, "SS3-M3-A Tree ID Card");
+  const rangerScan = await backend.recordQrScan({ rawId: "QR-TBJ-004", actorId: "RGR001", role: ROLE.RANGER });
+  assert.equal(rangerScan.event.routedTo, "SS2-M2-D Field Report");
+  const invalid = await backend.recordQrScan({ rawId: "QR-NOT-REAL", actorId: "RGR001", role: ROLE.RANGER });
+  assert.equal(invalid.ok, false);
+  assert.equal(invalid.event.scanResult, "invalid_qr");
+  const alerts = await backend.getSecurityAlerts();
+  assert.equal(alerts.data[0].alertType, "Unauthorized_Access");
+});
+
+test("SS4 backend supports spatial simulation confirmation and audit traceability", async () => {
+  const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const simulation = await backend.simulateSpatialPlan({
+    point: { x: 20, y: 20 },
+    species: "Pterocarpus indicus",
+    targetZone: "Arboretum",
+    createdBy: "admin001",
+  });
+  assert.equal(simulation.ok, true);
+  assert.equal(simulation.suitabilityLabel, "High");
+  assert.ok(simulation.canopyRadiusM > 0);
+  const confirmed = await backend.confirmSpatialPlan({
+    point: { x: 20, y: 20 },
+    species: "Pterocarpus indicus",
+    targetZone: "Arboretum",
+    createdBy: "admin001",
+  });
+  assert.equal(confirmed.ok, true);
+  assert.equal(confirmed.record.decision, "confirmed");
+  const plans = await backend.listSpatialPlans();
+  assert.equal(plans.data[0].planId, confirmed.record.planId);
+  const logs = await backend.getAuditLogs();
+  assert.ok(logs.data[0].event.includes(confirmed.record.planId));
+});
+
+test("SS4 Express API exposes map, QR, spatial and audit endpoints", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const ss4Backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const server = createApp({ backend, ss4Backend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const map = await fetch(`${baseUrl}/api/ss4/map?role=admin`).then((response) => response.json());
+    assert.equal(map.ok, true);
+    assert.ok(map.layerConfig.some((layer) => layer.layerId === "visitors"));
+
+    const scan = await fetch(`${baseUrl}/api/ss4/qr-scans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawId: "QR-TBJ-002", role: "Visitor", actorId: "api-visitor" }),
+    }).then((response) => response.json());
+    assert.equal(scan.ok, true);
+    assert.equal(scan.event.routedTo, "SS3-M3-A Tree ID Card");
+
+    const plan = await fetch(`${baseUrl}/api/ss4/spatial/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ point: { x: 53, y: 43 }, species: "Pterocarpus indicus", targetZone: "Arboretum" }),
+    }).then((response) => response.json());
+    assert.equal(plan.ok, true);
+
+    const audit = await fetch(`${baseUrl}/api/ss4/audit-logs`).then((response) => response.json());
+    assert.equal(audit.ok, true);
+    assert.ok(audit.data.length > 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("SS4 database schema documents map, QR, spatial, heatmap and security tables", () => {
+  const schema = readFileSync(new URL("../docs/database/ss4_schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS map_zones/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS qr_codes/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS qr_scan_events/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS spatial_planning_records/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_heatmap_aggregate/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS audit_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS security_alerts/);
 });
 

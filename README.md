@@ -77,7 +77,9 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
       <a href="src/components/map/GardenMap.jsx">GardenMap.jsx</a><br>
       <a href="src/components/qr/QRPage.jsx">QRPage.jsx</a><br>
       <a href="src/components/qr/QRScanner.jsx">QRScanner.jsx</a><br>
-      <a href="src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a>
+      <a href="src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a><br>
+      <a href="src/backend/ss4BackendService.js">ss4BackendService.js</a><br>
+      <a href="docs/SS4_BACKEND.md">SS4_BACKEND.md</a>
     </td>
   </tr>
   <tr>
@@ -158,6 +160,21 @@ The Visitor Engagement & Education backend is implemented as an Express API in `
 Visitor API responses intentionally hide operational health fields and mask protected rare-species coordinates, matching the SS3 visitor safety and SS4 RBAC/privacy requirements.
 
 Configuration is documented in `.env.example`, and the full backend notes are in `docs/SS3_BACKEND.md`. The visitor frontend calls the backend first for chat, route planning, QR scan analytics, and collection syncing; if the backend is not running, it falls back to local prototype logic so the demo still works.
+
+### SS4 Backend API
+
+Subsystem 4 is implemented in `src/backend/ss4BackendService.js` and runs inside the same Express backend. It supports the map, QR, spatial planning, overlay analytics, and audit/security requirements with JSON-file persistence for local demo reliability.
+
+| Feature | Endpoint |
+| --- | --- |
+| Role-safe map payload | `GET /api/ss4/map?role=admin` |
+| Role-filtered overlay layers | `GET /api/ss4/layers?role=ranger` |
+| QR label and scan ledger | `GET /api/ss4/qr-codes`, `GET/POST /api/ss4/qr-scans` |
+| Spatial suitability simulation | `POST /api/ss4/spatial/simulate`, `POST /api/ss4/spatial/confirm` |
+| Visitor heatmap analytics | `GET /api/ss4/analytics/heatmap` |
+| Audit and security monitoring | `GET /api/ss4/audit-logs`, `GET /api/ss4/security-alerts` |
+
+The SS4 production database design is documented in `docs/database/ss4_schema.sql`, and the full backend notes are in `docs/SS4_BACKEND.md`.
 
 ## Demo Accounts
 
