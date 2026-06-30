@@ -146,9 +146,11 @@ export function createApp({
     if (!Array.isArray(request.body.preferences)) {
       return badRequest(response, "preferences must be an array.");
     }
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.recommendVisitorRoute({
       ...request.body,
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
     }));
   }));
 
