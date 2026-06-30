@@ -86,6 +86,26 @@ export function createApp({
     sendResult(response, await fieldBackend.upsertRanger(request.body));
   }));
 
+  app.get("/api/ss2/schedules/current", asyncRoute(async (_request, response) => {
+    sendResult(response, await fieldBackend.getCurrentSchedule());
+  }));
+
+  app.post("/api/ss2/schedules/generate", asyncRoute(async (request, response) => {
+    sendResult(response, await fieldBackend.generateSchedule(request.body || {}));
+  }));
+
+  app.patch("/api/ss2/schedule-assignments/:assignmentId", asyncRoute(async (request, response) => {
+    sendResult(response, await fieldBackend.updateScheduleAssignment(request.params.assignmentId, request.body || {}));
+  }));
+
+  app.post("/api/ss2/schedules/:scheduleId/publish", asyncRoute(async (request, response) => {
+    sendResult(response, await fieldBackend.publishSchedule(request.params.scheduleId, request.body || {}));
+  }));
+
+  app.get("/api/ss2/notifications", asyncRoute(async (request, response) => {
+    response.json({ ok: true, data: await fieldBackend.listNotifications({ ranger: request.query.ranger || "" }) });
+  }));
+
   app.get("/api/ss2/tasks", asyncRoute(async (request, response) => {
     response.json({ ok: true, data: await fieldBackend.listTasks(request.query) });
   }));
@@ -118,10 +138,6 @@ export function createApp({
   app.post("/api/ss2/photo-analysis", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["treeId", "photoName"])) return;
     sendResult(response, await fieldBackend.analyzePhoto(request.body));
-  }));
-
-  app.post("/api/ss2/dev/reset", asyncRoute(async (_request, response) => {
-    sendResult(response, await fieldBackend.reset());
   }));
 
   app.get("/api/predictive-alerts", asyncRoute(async (_request, response) => {
