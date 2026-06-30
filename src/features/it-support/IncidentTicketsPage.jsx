@@ -1,13 +1,26 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { SUPPORT_TICKETS } from "../../data/itSupport.js";
+import { fetchItTicketsBackend, updateItTicketBackend } from "../../services/itSupportApiService.js";
 
 export default function IncidentTicketsPage({ showToast }) {
   const [tickets, setTickets] = useState(SUPPORT_TICKETS);
   const [status, setStatus] = useState("all");
   const [priority, setPriority] = useState("all");
   const [category, setCategory] = useState("all");
+  const [source, setSource] = useState("local fallback");
+
+  useEffect(() => {
+    let mounted = true;
+    fetchItTicketsBackend().then((payload) => {
+      if (mounted && payload?.ok) {
+        setTickets(payload.data || []);
+        setSource("backend API");
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const filtered = useMemo(() => tickets.filter((ticket) => {
     if (status !== "all" && ticket.status !== status) return false;
@@ -15,13 +28,20 @@ export default function IncidentTicketsPage({ showToast }) {
     return category === "all" || ticket.category === category;
   }), [category, priority, status, tickets]);
 
-  const updateTicket = (id, patch, message) => {
+  const updateTicket = async (id, patch, message) => {
+    const backendResult = await updateItTicketBackend({ ticketId: id, patch });
+    if (backendResult?.ticket) {
+      setTickets((current) => current.map((ticket) => ticket.id === id ? backendResult.ticket : ticket));
+      setSource("backend API");
+      showToast(message.replace("demo", "backend"));
+      return;
+    }
     setTickets((current) => current.map((ticket) => ticket.id === id ? { ...ticket, ...patch } : ticket));
-    showToast(message);
+    showToast(`${message} Local fallback used.`);
   };
 
   return (
-    <Card title="Incident Tickets" subtitle="Mock support queue for IT Support follow-up">
+    <Card title="Incident Tickets" subtitle={`Support queue for IT Support follow-up · ${source}`}>
       <div className="page-toolbar">
         <div className="toolbar-actions">
           <select value={status} onChange={(event) => setStatus(event.target.value)}>

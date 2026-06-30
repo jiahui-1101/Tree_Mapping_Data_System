@@ -5,6 +5,9 @@
 
 CREATE TABLE IF NOT EXISTS visitor_sessions (
   session_id VARCHAR(80) PRIMARY KEY,
+  visitor_type VARCHAR(30) NOT NULL DEFAULT 'guest',
+  display_name VARCHAR(120) NOT NULL DEFAULT 'Guest Visitor',
+  role VARCHAR(30) NOT NULL DEFAULT 'Visitor',
   preferred_language VARCHAR(5) NOT NULL DEFAULT 'en',
   first_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   last_seen_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP

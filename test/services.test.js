@@ -11,7 +11,7 @@ import { analyzeFieldPhoto, buildReportAnalysis, createFieldReport, filterFieldR
 import { addCollectedTree, addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "../src/services/storageService.js";
 import { TREES } from "../src/data/trees.js";
 import { INITIAL_FIELD_REPORTS } from "../src/data/fieldReports.js";
-import { SERVICE_LOGS, SYSTEM_SERVICES } from "../src/data/itSupport.js";
+import { ACCESS_USERS, SERVICE_LOGS, SYSTEM_SERVICES } from "../src/data/itSupport.js";
 import { INITIAL_TASKS } from "../src/data/tasks.js";
 import { visitorText, visitorTreeDescription } from "../src/services/visitorI18n.js";
 import { MAP_ZONES, TBJ_COLLECTION_SUMMARIES, TBJ_MAP_FACTS, TBJ_STAKEHOLDER_PLOTS, countStakeholderRecords, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotInventory, getStakeholderPlotsByZone, getStakeholderSourceGroup, getVisitorZone, percentToWorldPosition, worldToPercentPosition } from "../src/data/gardenMap.js";
@@ -19,6 +19,8 @@ import { getPublicTreeCard, projectGrowth } from "../src/data/visitorTreeProfile
 import { createApp } from "../src/backend/server.js";
 import { createVisitorBackend, addTreeToVisitorCollection, answerVisitorChat, getSs4QrScanEvents, getVisitorAnalytics, getVisitorCollection, getVisitorTreeIdCard, recommendVisitorRoute, recordVisitorScan, resetVisitorBackendState } from "../src/backend/visitorBackendService.js";
 import { createVisitorStore } from "../src/backend/visitorStore.js";
+import { createSs4Backend, createSs4Store } from "../src/backend/ss4BackendService.js";
+import { createItSupportBackend, createItSupportStore } from "../src/backend/itSupportBackendService.js";
 
 function createStorage() {
   const values = new Map();
@@ -328,8 +330,8 @@ test("growth simulation produces distinct visual model values", () => {
 });
 
 test("SS3 backend returns visitor-safe digital tree ID cards", async () => {
-  await resetVisitorBackendState();
-  const result = getVisitorTreeIdCard("TBJ-005", { language: "zh", growthYears: 25 });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const result = backend.getVisitorTreeIdCard("TBJ-005", { language: "zh", growthYears: 25 });
   assert.equal(result.ok, true);
   assert.equal(result.tree.health, undefined);
   assert.equal(result.tree.status, undefined);
@@ -342,12 +344,13 @@ test("SS3 backend returns visitor-safe digital tree ID cards", async () => {
 });
 
 test("SS3 backend validates route preferences and provides AI fallback route", async () => {
-  const missing = await recommendVisitorRoute({ preferences: [], language: "bm" });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const missing = await backend.recommendVisitorRoute({ preferences: [], language: "bm" });
   assert.equal(missing.ok, false);
   assert.equal(missing.status, 400);
   assert.match(missing.message, /sekurang-kurangnya/i);
 
-  const route = await recommendVisitorRoute({ preferences: ["rare", "ancient"], duration: 90, language: "en", aiAvailable: false });
+  const route = await backend.recommendVisitorRoute({ preferences: ["rare", "ancient"], duration: 90, language: "en", aiAvailable: false });
   assert.equal(route.ok, true);
   assert.equal(route.fallback, true);
   assert.equal(route.estimatedDuration, 90);
@@ -356,7 +359,8 @@ test("SS3 backend validates route preferences and provides AI fallback route", a
 });
 
 test("SS3 backend chatbot is multilingual and hides sensitive operations", async () => {
-  const reply = await answerVisitorChat({ question: "为什么隐藏珍稀物种位置？", language: "zh" });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }), config: { aiProvider: "mock", aiTimeoutMs: 100 } });
+  const reply = await backend.answerVisitorChat({ question: "为什么隐藏珍稀物种位置？", language: "zh" });
   assert.equal(reply.ok, true);
   assert.equal(reply.intent, "rare_species_privacy");
   assert.equal(reply.provider, "Local rule engine");
@@ -365,25 +369,25 @@ test("SS3 backend chatbot is multilingual and hides sensitive operations", async
 });
 
 test("SS3 backend collection and scan analytics support visitor discovery tracking", async () => {
-  await resetVisitorBackendState();
-  const first = await addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
-  const duplicate = await addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const first = await backend.addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  const duplicate = await backend.addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
   assert.equal(first.isNew, true);
   assert.equal(duplicate.isNew, false);
-  assert.equal((await getVisitorCollection({ sessionId: "visitor-a" })).collection.totalCollected, 1);
+  assert.equal((await backend.getVisitorCollection({ sessionId: "visitor-a" })).collection.totalCollected, 1);
 
-  const scan = await recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
+  const scan = await backend.recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
   assert.equal(scan.ok, true);
   assert.equal(scan.collection.totalCollected, 2);
-  const analytics = await getVisitorAnalytics();
+  const analytics = await backend.getVisitorAnalytics();
   assert.equal(analytics.totalScans, 1);
   assert.equal(analytics.byZone.Tanaman, 1);
 });
 
 test("SS3 backend exposes scan events in SS4 QRScanEvents shape", async () => {
-  await resetVisitorBackendState();
-  await recordVisitorScan({ sessionId: "ss4-link", treeId: "TBJ-002", language: "en" });
-  const payload = await getSs4QrScanEvents();
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  await backend.recordVisitorScan({ sessionId: "ss4-link", treeId: "TBJ-002", language: "en" });
+  const payload = await backend.getSs4QrScanEvents();
   assert.equal(payload.ok, true);
   assert.equal(payload.targetModel, "SS4.QRScanEvents");
   assert.deepEqual(Object.keys(payload.events[0]), [
@@ -415,9 +419,17 @@ test("SS3 Express API exposes visitor backend endpoints", async () => {
     assert.equal(tree.tree.status, undefined);
     assert.equal(tree.privacy.protectedCoordinatesMasked, true);
 
+    const session = await fetch(`${baseUrl}/api/visitor/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(session.ok, true);
+    assert.match(session.session.sessionId, /^vst_/);
+
     const collection = await fetch(`${baseUrl}/api/visitor/collection`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Visitor-Session": "api-test" },
+      headers: { "Content-Type": "application/json", "X-Visitor-Session": session.session.sessionId },
       body: JSON.stringify({ treeId: "TBJ-002", language: "en" }),
     }).then((response) => response.json());
     assert.equal(collection.ok, true);
@@ -447,6 +459,14 @@ test("SS3 Express API validates visitor request payloads", async () => {
     }).then((response) => response.json());
     assert.equal(invalidRoute.ok, false);
     assert.match(invalidRoute.message, /preferences must be an array/);
+
+    const blockedCollection = await fetch(`${baseUrl}/api/visitor/collection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ treeId: "TBJ-001", language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(blockedCollection.ok, false);
+    assert.equal(blockedCollection.error, "VISITOR_SESSION_REQUIRED");
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
@@ -476,5 +496,197 @@ test("SS3 database schema documents visitor integration tables", () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_scan_events/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_chat_logs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_route_plans/);
+});
+
+test("SS4 backend returns official map payload with role-safe tree coordinates", async () => {
+  const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const adminMap = await backend.getMapPayload({ role: ROLE.ADMIN });
+  const adminDisplayMap = await backend.getMapPayload({ role: "Admin" });
+  const visitorMap = await backend.getMapPayload({ role: ROLE.VISITOR });
+  assert.equal(adminMap.ok, true);
+  assert.equal(adminMap.facts.areaAcres, 245.04);
+  assert.ok(adminMap.zones.some((zone) => zone.id === "arboretum"));
+  assert.ok(adminMap.landmarks.some((landmark) => landmark.id === "bukit-besi"));
+  assert.ok(adminMap.sourceLinks.jln.includes("jln.gov.my"));
+  assert.ok(adminMap.layerConfig.some((layer) => layer.layerId === "visitors"));
+  assert.ok(adminDisplayMap.layerConfig.some((layer) => layer.layerId === "visitors"));
+  assert.ok(!visitorMap.layerConfig.some((layer) => layer.layerId === "visitors"));
+  assert.equal(visitorMap.trees.find((tree) => tree.id === "TBJ-005").x, null);
+});
+
+test("SS4 backend routes QR scans by role and creates security alerts for invalid QR", async () => {
+  const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const visitorScan = await backend.recordQrScan({ rawId: "QR-TBJ-002", actorId: "visitor-session", role: ROLE.VISITOR });
+  assert.equal(visitorScan.ok, true);
+  assert.equal(visitorScan.event.routedTo, "SS3-M3-A Tree ID Card");
+  const rangerScan = await backend.recordQrScan({ rawId: "QR-TBJ-004", actorId: "RGR001", role: ROLE.RANGER });
+  assert.equal(rangerScan.event.routedTo, "SS2-M2-D Field Report");
+  const invalid = await backend.recordQrScan({ rawId: "QR-NOT-REAL", actorId: "RGR001", role: ROLE.RANGER });
+  assert.equal(invalid.ok, false);
+  assert.equal(invalid.event.scanResult, "invalid_qr");
+  const alerts = await backend.getSecurityAlerts();
+  assert.equal(alerts.data[0].alertType, "Unauthorized_Access");
+});
+
+test("SS4 backend supports spatial simulation confirmation and audit traceability", async () => {
+  const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const simulation = await backend.simulateSpatialPlan({
+    point: { x: 20, y: 20 },
+    species: "Pterocarpus indicus",
+    targetZone: "Arboretum",
+    createdBy: "admin001",
+  });
+  assert.equal(simulation.ok, true);
+  assert.equal(simulation.suitabilityLabel, "High");
+  assert.equal(simulation.provider, "Local rule engine");
+  assert.equal(simulation.fallbackUsed, true);
+  assert.ok(simulation.canopyRadiusM > 0);
+  const confirmed = await backend.confirmSpatialPlan({
+    point: { x: 20, y: 20 },
+    species: "Pterocarpus indicus",
+    targetZone: "Arboretum",
+    createdBy: "admin001",
+  });
+  assert.equal(confirmed.ok, true);
+  assert.equal(confirmed.record.decision, "confirmed");
+  const plans = await backend.listSpatialPlans();
+  assert.equal(plans.data[0].planId, confirmed.record.planId);
+  const logs = await backend.getAuditLogs();
+  assert.ok(logs.data[0].event.includes(confirmed.record.planId));
+});
+
+test("SS4 spatial AI provider falls back when no external API key is configured", async () => {
+  const backend = createSs4Backend({
+    config: { ss4AiProvider: "openai", aiTimeoutMs: 10, openaiApiKey: "", openaiModel: "gpt-4o-mini" },
+    store: createSs4Store({ persist: false }),
+  });
+  const simulation = await backend.simulateSpatialPlan({
+    point: { x: 20, y: 20 },
+    species: "Pterocarpus indicus",
+    targetZone: "Arboretum",
+  });
+  assert.equal(simulation.ok, true);
+  assert.equal(simulation.provider, "Local rule engine");
+  assert.equal(simulation.fallbackUsed, true);
+});
+
+test("SS4 Express API exposes map, QR, spatial and audit endpoints", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const ss4Backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const server = createApp({ backend, ss4Backend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const map = await fetch(`${baseUrl}/api/ss4/map?role=admin`).then((response) => response.json());
+    assert.equal(map.ok, true);
+    assert.ok(map.layerConfig.some((layer) => layer.layerId === "visitors"));
+
+    const scan = await fetch(`${baseUrl}/api/ss4/qr-scans`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ rawId: "QR-TBJ-002", role: "Visitor", actorId: "api-visitor" }),
+    }).then((response) => response.json());
+    assert.equal(scan.ok, true);
+    assert.equal(scan.event.routedTo, "SS3-M3-A Tree ID Card");
+
+    const plan = await fetch(`${baseUrl}/api/ss4/spatial/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ point: { x: 53, y: 43 }, species: "Pterocarpus indicus", targetZone: "Arboretum" }),
+    }).then((response) => response.json());
+    assert.equal(plan.ok, true);
+
+    const audit = await fetch(`${baseUrl}/api/ss4/audit-logs`).then((response) => response.json());
+    assert.equal(audit.ok, true);
+    assert.ok(audit.data.length > 0);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("SS4 database schema documents map, QR, spatial, heatmap and security tables", () => {
+  const schema = readFileSync(new URL("../docs/database/ss4_schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS map_zones/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS qr_codes/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS qr_scan_events/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS spatial_planning_records/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ai_simulation_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS map_layer_config/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_heatmap_aggregate/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS audit_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS security_alerts/);
+});
+
+test("IT Support backend returns dashboard and service telemetry", async () => {
+  const backend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const dashboard = await backend.getDashboard();
+  assert.equal(dashboard.ok, true);
+  assert.equal(dashboard.data.services.length, SYSTEM_SERVICES.length);
+  assert.ok(dashboard.data.degradedServices >= 1);
+  const health = await backend.health();
+  assert.equal(health.ok, true);
+  assert.equal(health.users, ACCESS_USERS.length);
+});
+
+test("IT Support backend performs service, access and ticket actions with audit trail", async () => {
+  const backend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const restart = await backend.runServiceAction({ serviceId: "qr-service", action: "restart", actor: "it001" });
+  assert.equal(restart.ok, true);
+  assert.equal(restart.service.status, "online");
+  const access = await backend.updateUserAccess({ userId: "RGR004", action: "unlock", actor: "it001" });
+  assert.equal(access.ok, true);
+  assert.equal(access.user.status, "active");
+  const ticket = await backend.updateTicket({ ticketId: "INC-1042", patch: { status: "resolved", owner: "Nur Izzati" }, actor: "it001" });
+  assert.equal(ticket.ok, true);
+  assert.equal(ticket.ticket.status, "resolved");
+  const created = await backend.createTicket({ title: "Protected map access review", priority: "high", category: "Security" });
+  assert.equal(created.ok, true);
+  assert.match(created.ticket.id, /^INC-/);
+});
+
+test("IT Support Express API exposes dashboard, services, users and tickets", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const itSupportBackend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const server = createApp({ backend, itSupportBackend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const dashboard = await fetch(`${baseUrl}/api/it-support/dashboard`).then((response) => response.json());
+    assert.equal(dashboard.ok, true);
+    assert.ok(dashboard.data.services.length > 0);
+
+    const action = await fetch(`${baseUrl}/api/it-support/services/qr-service/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "restart", actor: "it001" }),
+    }).then((response) => response.json());
+    assert.equal(action.ok, true);
+    assert.equal(action.service.status, "online");
+
+    const user = await fetch(`${baseUrl}/api/it-support/users/RGR004/access`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "unlock", actor: "it001" }),
+    }).then((response) => response.json());
+    assert.equal(user.ok, true);
+    assert.equal(user.user.status, "active");
+
+    const ticket = await fetch(`${baseUrl}/api/it-support/tickets/INC-1042`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "resolved", owner: "Nur Izzati" }),
+    }).then((response) => response.json());
+    assert.equal(ticket.ok, true);
+    assert.equal(ticket.ticket.status, "resolved");
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("IT Support database schema documents operations tables", () => {
+  const schema = readFileSync(new URL("../docs/database/it_support_schema.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_system_services/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_access_users/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_support_tickets/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_service_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS it_audit_events/);
 });
 

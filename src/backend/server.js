@@ -2,13 +2,17 @@ import express from "express";
 import { fileURLToPath } from "node:url";
 import { getBackendConfig } from "./backendConfig.js";
 import { createFieldBackend } from "./fieldBackendService.js";
+import { createItSupportBackend } from "./itSupportBackendService.js";
 import { createMaintenanceBackend } from "./maintenanceBackendService.js";
+import { createSs4Backend } from "./ss4BackendService.js";
 import { createVisitorBackend } from "./visitorBackendService.js";
 
 export function createApp({
   backend = createVisitorBackend(),
   fieldBackend = createFieldBackend({ config: { ...getBackendConfig(), fieldStore: "memory" } }),
   maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
+  ss4Backend = createSs4Backend({ config: getBackendConfig() }),
+  itSupportBackend = createItSupportBackend({ config: getBackendConfig() }),
 } = {}) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
@@ -29,6 +33,12 @@ export function createApp({
     }
   };
   const sessionId = (request) => request.headers["x-visitor-session"] || request.query.sessionId || request.body?.sessionId;
+  const requireVisitorSession = async (request, response) => {
+    const result = await backend.validateVisitorSession(sessionId(request));
+    if (result.ok) return result.session;
+    sendResult(response, result);
+    return null;
+  };
   const badRequest = (response, message, error = "VALIDATION_ERROR") => response.status(400).json({ ok: false, error, message });
   const requireBody = (request, response, requiredFields = []) => {
     if (!request.body || typeof request.body !== "object") {
@@ -51,6 +61,8 @@ export function createApp({
         field: ["/api/ss2/tasks", "/api/ss2/reports", "/api/ss2/rangers"],
         visitor: ["/api/visitor/profiles", "/api/visitor/chat", "/api/visitor/routes/recommend"],
         maintenance: ["/api/predictive-alerts", "/api/tasks", "POST /api/predictive-alerts/ALT-001/approve"],
+        ss4: ["/api/ss4/map", "/api/ss4/qr-scans", "/api/ss4/spatial/simulate", "/api/ss4/audit-logs"],
+        itSupport: ["/api/it-support/dashboard", "/api/it-support/services", "/api/it-support/users", "/api/it-support/tickets"],
       },
     });
   });
@@ -70,6 +82,8 @@ export function createApp({
       ],
       field: await fieldBackend.health(),
       maintenance: await maintenanceBackend.health(),
+      ss4: await ss4Backend.health(),
+      itSupport: await itSupportBackend.health(),
     });
   }));
 
@@ -171,6 +185,13 @@ export function createApp({
     sendResult(response, await maintenanceBackend.reset());
   }));
 
+  app.post("/api/visitor/sessions", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.createGuestVisitorSession({
+      language: request.body?.language,
+      displayName: request.body?.displayName,
+    }));
+  }));
+
   app.get("/api/visitor/profiles", (request, response) => {
     response.json({
       ok: true,
@@ -197,31 +218,39 @@ export function createApp({
     if (!Array.isArray(request.body.preferences)) {
       return badRequest(response, "preferences must be an array.");
     }
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.recommendVisitorRoute({
       ...request.body,
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
     }));
   }));
 
   app.post("/api/visitor/chat", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["question"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.answerVisitorChat({
       ...request.body,
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
     }));
   }));
 
   app.get("/api/visitor/collection", asyncRoute(async (request, response) => {
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.getVisitorCollection({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       language: request.query.language,
     }));
   }));
 
   app.post("/api/visitor/collection", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["treeId"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.addTreeToVisitorCollection({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       treeId: request.body.treeId,
       language: request.body.language,
     }));
@@ -229,8 +258,10 @@ export function createApp({
 
   app.post("/api/visitor/scans", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["treeId"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.recordVisitorScan({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       treeId: request.body.treeId,
       language: request.body.language,
       source: request.body.source,
@@ -243,6 +274,103 @@ export function createApp({
 
   app.get("/api/visitor/integrations/ss4/qr-scan-events", asyncRoute(async (_request, response) => {
     response.json(await backend.getSs4QrScanEvents());
+  }));
+
+  app.get("/api/ss4/map", asyncRoute(async (request, response) => {
+    response.json(await ss4Backend.getMapPayload({ role: request.query.role }));
+  }));
+
+  app.get("/api/ss4/layers", (request, response) => {
+    response.json(ss4Backend.getLayerConfig({ role: request.query.role }));
+  });
+
+  app.get("/api/ss4/qr-codes", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.listQrCodes());
+  }));
+
+  app.get("/api/ss4/qr-scans", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.listQrScanEvents());
+  }));
+
+  app.post("/api/ss4/qr-scans", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["role"])) return;
+    sendResult(response, await ss4Backend.recordQrScan(request.body));
+  }));
+
+  app.post("/api/ss4/spatial/simulate", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["point", "species", "targetZone"])) return;
+    sendResult(response, await ss4Backend.simulateSpatialPlan(request.body));
+  }));
+
+  app.post("/api/ss4/spatial/confirm", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["point", "species", "targetZone"])) return;
+    sendResult(response, await ss4Backend.confirmSpatialPlan(request.body));
+  }));
+
+  app.get("/api/ss4/spatial/plans", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.listSpatialPlans());
+  }));
+
+  app.get("/api/ss4/analytics/heatmap", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.getVisitorHeatmap());
+  }));
+
+  app.get("/api/ss4/audit-logs", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.getAuditLogs());
+  }));
+
+  app.get("/api/ss4/security-alerts", asyncRoute(async (_request, response) => {
+    response.json(await ss4Backend.getSecurityAlerts());
+  }));
+
+  app.get("/api/it-support/dashboard", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.getDashboard());
+  }));
+
+  app.get("/api/it-support/services", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.listServices());
+  }));
+
+  app.get("/api/it-support/services/:serviceId/logs", asyncRoute(async (request, response) => {
+    response.json(await itSupportBackend.getServiceLogs(request.params.serviceId));
+  }));
+
+  app.post("/api/it-support/services/:serviceId/actions", asyncRoute(async (request, response) => {
+    sendResult(response, await itSupportBackend.runServiceAction({
+      serviceId: request.params.serviceId,
+      action: request.body?.action,
+      actor: request.body?.actor,
+    }));
+  }));
+
+  app.get("/api/it-support/users", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.listUsers());
+  }));
+
+  app.patch("/api/it-support/users/:userId/access", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["action"])) return;
+    sendResult(response, await itSupportBackend.updateUserAccess({
+      userId: request.params.userId,
+      action: request.body.action,
+      actor: request.body.actor,
+    }));
+  }));
+
+  app.get("/api/it-support/tickets", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.listTickets());
+  }));
+
+  app.post("/api/it-support/tickets", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["title"])) return;
+    sendResult(response, await itSupportBackend.createTicket(request.body));
+  }));
+
+  app.patch("/api/it-support/tickets/:ticketId", asyncRoute(async (request, response) => {
+    sendResult(response, await itSupportBackend.updateTicket({
+      ticketId: request.params.ticketId,
+      patch: request.body || {},
+      actor: request.body?.actor,
+    }));
   }));
 
   app.use((request, response) => {
@@ -266,6 +394,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     backend: createVisitorBackend({ config }),
     fieldBackend: createFieldBackend({ config }),
     maintenanceBackend: createMaintenanceBackend({ config }),
+    ss4Backend: createSs4Backend({ config }),
+    itSupportBackend: createItSupportBackend({ config }),
   }).listen(config.port, () => {
     console.log(`TBJ shared backend listening on http://localhost:${config.port}`);
   });

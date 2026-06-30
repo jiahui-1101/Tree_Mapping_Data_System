@@ -8,7 +8,7 @@ This document describes the backend implementation for Subsystem 3: Visitor Enga
 | --- | --- |
 | M3-A Digital Tree ID Card | `GET /api/visitor/trees/:treeId` returns visitor-safe public tree profile data, localized education content, and AI-style growth projection. |
 | M3-B AI Plant Chatbot | `POST /api/visitor/chat` supports multilingual botanical Q&A with optional Gemini/OpenAI provider and local fallback. |
-| M3-C Exploration Collection System | `GET/POST /api/visitor/collection` stores collected tree badges by visitor session. |
+| M3-C Exploration Collection System | `POST /api/visitor/sessions` creates a guest visitor session, then `GET/POST /api/visitor/collection` stores collected tree badges by session. |
 | M3-D AI Preference Route Recommender | `POST /api/visitor/routes/recommend` validates visitor interests and returns a route with safe waypoints. |
 | M3-E Multilingual Interface | All visitor endpoints accept `language` values `en`, `bm`, or `zh`, with English fallback. |
 
@@ -83,7 +83,30 @@ The Express API validates SS3 visitor requests before they reach the business se
 - `treeId` path values must match `TBJ-001` style identifiers.
 - route preferences must be an array.
 - chat, collection, and scan writes require the relevant JSON body fields.
+- personalized visitor APIs require a valid guest visitor session in `X-Visitor-Session`.
 - validation failures return `{ ok: false, error: "VALIDATION_ERROR" }`.
+
+## Visitor Session Flow
+
+SS3 keeps visitor identity lightweight so the public garden demo still supports "Login as Guest Visitor" without changing the shared Admin/Ranger/IT login flow.
+
+```http
+POST /api/visitor/sessions
+Content-Type: application/json
+
+{
+  "language": "en",
+  "displayName": "Guest Visitor"
+}
+```
+
+The response contains a `session.sessionId` value such as `vst_...`. The frontend stores it in local storage and sends it on personalized visitor requests:
+
+```http
+X-Visitor-Session: vst_...
+```
+
+Public read-only endpoints such as visitor profiles and Tree ID cards remain accessible without a session. Collection, QR scan, chatbot, and route recommendation endpoints require a session because they write visitor-specific history.
 
 ## API Summary
 
@@ -145,6 +168,7 @@ Returns answer, intent, provider metadata, fallback status, and safety flags.
 ### Collection
 
 ```http
+POST /api/visitor/sessions
 GET /api/visitor/collection?language=en
 POST /api/visitor/collection
 ```
@@ -165,7 +189,7 @@ POST /api/visitor/scans
 GET /api/visitor/analytics/scans
 ```
 
-Scan records are aggregated by zone and tree to support SS4 heatmap integration.
+`POST /api/visitor/scans` requires `X-Visitor-Session`. Scan records are aggregated by zone and tree to support SS4 heatmap integration.
 
 ### SS4 QR Scan Event Bridge
 

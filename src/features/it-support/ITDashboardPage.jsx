@@ -1,14 +1,27 @@
+import { useEffect, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { AUDIT_LOGS } from "../../data/auditLogs.js";
 import { ACCESS_USERS, SUPPORT_TICKETS, SYSTEM_SERVICES } from "../../data/itSupport.js";
+import { fetchItDashboardBackend } from "../../services/itSupportApiService.js";
 
 export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, showToast }) {
-  const degradedServices = SYSTEM_SERVICES.filter((service) => service.status !== "online").length;
-  const failedLogins = auditLogs.filter((log) => log.event.toLowerCase().includes("failed")).length;
-  const lockedAccounts = ACCESS_USERS.filter((user) => user.status === "locked").length;
-  const highRiskEvents = auditLogs.filter((log) => log.severity === "high").length;
-  const activeTickets = SUPPORT_TICKETS.filter((ticket) => ticket.status !== "resolved");
+  const [backendDashboard, setBackendDashboard] = useState(null);
+  useEffect(() => {
+    let mounted = true;
+    fetchItDashboardBackend().then((payload) => {
+      if (mounted && payload?.ok) setBackendDashboard(payload.data);
+    });
+    return () => { mounted = false; };
+  }, []);
+  const services = backendDashboard?.services || SYSTEM_SERVICES;
+  const users = backendDashboard?.users || ACCESS_USERS;
+  const tickets = backendDashboard?.tickets || SUPPORT_TICKETS;
+  const degradedServices = backendDashboard?.degradedServices ?? services.filter((service) => service.status !== "online").length;
+  const failedLogins = backendDashboard?.failedLogins ?? auditLogs.filter((log) => log.event.toLowerCase().includes("failed")).length;
+  const lockedAccounts = backendDashboard?.lockedAccounts ?? users.filter((user) => user.status === "locked").length;
+  const highRiskEvents = backendDashboard?.highRiskEvents ?? auditLogs.filter((log) => log.severity === "high").length;
+  const activeTickets = tickets.filter((ticket) => ticket.status !== "resolved");
 
   return (
     <>
@@ -19,9 +32,9 @@ export default function ITDashboardPage({ auditLogs = AUDIT_LOGS, onNavigate, sh
         <div className="metric-card"><b>Locked accounts</b><strong>{lockedAccounts}</strong><small>Require IT review</small></div>
       </div>
 
-      <Card title="System Health Overview" subtitle="Operational services watched by IT Support">
+      <Card title="System Health Overview" subtitle={`Operational services watched by IT Support · ${backendDashboard ? "backend API" : "local fallback"}`}>
         <div className="it-service-grid">
-          {SYSTEM_SERVICES.map((service) => (
+          {services.map((service) => (
             <article className={`it-service-card it-service-${service.status}`} key={service.id}>
               <span><strong>{service.name}</strong><StatusPill status={service.status} /></span>
               <p>{service.dependency}</p>

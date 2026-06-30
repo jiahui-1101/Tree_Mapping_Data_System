@@ -1,5 +1,5 @@
 export const TBJ_OFFICIAL_SOURCE_URL = "https://www.jln.gov.my/index.php/pages/view/504";
-export const TBJ_GOOGLE_MAPS_URL = "https://www.google.com/maps/search/?api=1&query=Taman%20Botani%20Johor%20Sri%20Medan";
+export const TBJ_GOOGLE_MAPS_URL = "https://www.google.com/maps/place/taman+botani+johor+batu+pahat/data=!4m2!3m1!1s0x31d04f095e7739ad:0x2db8371ec9f0cc60";
 
 export const TBJ_MAP_FACTS = {
   areaAcres: 245.04,
@@ -7,8 +7,9 @@ export const TBJ_MAP_FACTS = {
   nurseryAcres: 50.95,
   location: "East of Pekan Sri Medan, along Jalan Utama Yong Peng - Sri Medan",
   googleMapCenter: "1.9794013, 102.9604839",
-  crossCheck: "Lake and entrance orientation cross-checked against the public Google Maps view.",
-  mapNote: "Conceptual 3D interpretation based on public official zone information. It is not a surveyed GIS boundary.",
+  crossCheck: "Lake, entrance, and zone orientation cross-checked against the public Google Maps view and the supplied TBJ zoning image.",
+  mapNote: "Conceptual 3D interpretation based on public official zone information, Google Maps location context, and the supplied map reference. It is not a surveyed GIS boundary.",
+  markerNote: "Tree markers are rendered from the prototype Trees.coord_x/coord_y records; cyan/green dots on the reference map are represented as clickable tree pins.",
 };
 
 export const TBJ_OFFICIAL_CONTEXT = {
@@ -77,6 +78,7 @@ export const MAP_ZONES = [
 
 export const MAP_LANDMARKS = [
   { id: "jalan-seri-medan", name: "Jln Seri Medan", type: "road", x: -44, z: -24 },
+  { id: "main-marker", name: "Main", type: "entrance", x: -42, z: -2 },
   { id: "entrance", name: "Pintu Masuk", type: "entrance", x: -41, z: 0 },
   { id: "admin", name: "Pentadbiran", type: "building", x: -35, z: -4 },
   { id: "herbarium", name: "Herbarium", type: "building", x: -28, z: -6 },
@@ -84,6 +86,8 @@ export const MAP_LANDMARKS = [
   { id: "bukit-besi", name: "Tasik Bukit Besi", type: "lake", x: 8, z: -10 },
   { id: "bukit-belah", name: "Tasik Bukit Belah", type: "lake", x: 8, z: 17 },
   { id: "jetty", name: "Jeti & Boardwalk", type: "jetty", x: -1, z: -5 },
+  { id: "nursery-house", name: "Tapak Semaian", type: "building", x: 34, z: 23 },
+  { id: "fruit-plot", name: "Zon Tanaman", type: "plot", x: -30, z: 29 },
 ];
 
 export const ARBORETUM_PLOTS = [
@@ -373,5 +377,5 @@ export function formatPlotQuantity(plotId) {
 }
 
 export function getMapSourceSummary() {
-  return "Official JLN zones + stakeholder DOCX inventory quantities, conceptual demo map.";
+  return "Official JLN zones + Google Maps location context + supplied TBJ zoning image + stakeholder DOCX inventory quantities.";
 }

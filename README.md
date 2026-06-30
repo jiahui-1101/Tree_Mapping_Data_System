@@ -77,7 +77,9 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
       <a href="src/components/map/GardenMap.jsx">GardenMap.jsx</a><br>
       <a href="src/components/qr/QRPage.jsx">QRPage.jsx</a><br>
       <a href="src/components/qr/QRScanner.jsx">QRScanner.jsx</a><br>
-      <a href="src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a>
+      <a href="src/components/qr/TreeQrLabel.jsx">TreeQrLabel.jsx</a><br>
+      <a href="src/backend/ss4BackendService.js">ss4BackendService.js</a><br>
+      <a href="docs/SS4_BACKEND.md">SS4_BACKEND.md</a>
     </td>
   </tr>
   <tr>
@@ -86,7 +88,9 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
       <a href="src/features/it-support/ITDashboardPage.jsx">ITDashboardPage.jsx</a><br>
       <a href="src/features/it-support/SystemMonitoringPage.jsx">SystemMonitoringPage.jsx</a><br>
       <a href="src/features/it-support/UserAccessPage.jsx">UserAccessPage.jsx</a><br>
-      <a href="src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a>
+      <a href="src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a><br>
+      <a href="src/backend/itSupportBackendService.js">itSupportBackendService.js</a><br>
+      <a href="docs/IT_SUPPORT_BACKEND.md">IT_SUPPORT_BACKEND.md</a>
     </td>
   </tr>
   <tr>
@@ -158,6 +162,35 @@ The Visitor Engagement & Education backend is implemented as an Express API in `
 Visitor API responses intentionally hide operational health fields and mask protected rare-species coordinates, matching the SS3 visitor safety and SS4 RBAC/privacy requirements.
 
 Configuration is documented in `.env.example`, and the full backend notes are in `docs/SS3_BACKEND.md`. The visitor frontend calls the backend first for chat, route planning, QR scan analytics, and collection syncing; if the backend is not running, it falls back to local prototype logic so the demo still works.
+
+### SS4 Backend API
+
+Subsystem 4 is implemented in `src/backend/ss4BackendService.js` and runs inside the same Express backend. It supports the map, QR, spatial planning, overlay analytics, and audit/security requirements with JSON-file persistence for local demo reliability and optional MySQL persistence through `SS4_STORE=mysql`.
+
+| Feature | Endpoint |
+| --- | --- |
+| Role-safe map payload | `GET /api/ss4/map?role=admin` |
+| Role-filtered overlay layers | `GET /api/ss4/layers?role=ranger` |
+| QR label and scan ledger | `GET /api/ss4/qr-codes`, `GET/POST /api/ss4/qr-scans` |
+| Spatial suitability simulation | `POST /api/ss4/spatial/simulate`, `POST /api/ss4/spatial/confirm` |
+| Visitor heatmap analytics | `GET /api/ss4/analytics/heatmap` |
+| Audit and security monitoring | `GET /api/ss4/audit-logs`, `GET /api/ss4/security-alerts` |
+
+The SS4 production database design is documented in `docs/database/ss4_schema.sql`, and the full backend notes are in `docs/SS4_BACKEND.md`. Spatial planning can use Gemini/OpenAI through `SS4_AI_PROVIDER`, then falls back to local suitability rules. The QR scanner uses browser camera APIs with a manual QR fallback, and the SS4 map page includes a Google Maps embed reference with a local 3D map fallback.
+
+### IT Support Backend API
+
+IT Support operations are implemented in `src/backend/itSupportBackendService.js` and run inside the same Express backend. The module supports dashboard metrics, system service monitoring, access-control actions, incident ticket handling, service logs, audit events, JSON runtime persistence, and optional MySQL persistence through `IT_SUPPORT_STORE=mysql`.
+
+| Feature | Endpoint |
+| --- | --- |
+| IT dashboard summary | `GET /api/it-support/dashboard` |
+| Service monitoring and logs | `GET /api/it-support/services`, `GET /api/it-support/services/:serviceId/logs` |
+| Service actions | `POST /api/it-support/services/:serviceId/actions` |
+| User access control | `GET /api/it-support/users`, `PATCH /api/it-support/users/:userId/access` |
+| Incident tickets | `GET/POST /api/it-support/tickets`, `PATCH /api/it-support/tickets/:ticketId` |
+
+The IT Support production database design is documented in `docs/database/it_support_schema.sql`, and full backend notes are in `docs/IT_SUPPORT_BACKEND.md`.
 
 ## Demo Accounts
 

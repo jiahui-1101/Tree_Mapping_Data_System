@@ -36,6 +36,7 @@ import { createFieldTaskBackend, fetchFieldBackendState, submitFieldReportBacken
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
 import { collectVisitorTreeBackend, recordVisitorScanBackend } from "./services/visitorApiService.js";
 import { visitorText } from "./services/visitorI18n.js";
+import { recordSs4QrScanBackend } from "./services/ss4ApiService.js";
 
 const ROLE_LABEL = {
   [ROLE.ADMIN]: "Admin",
@@ -296,6 +297,13 @@ export default function App() {
       scannedAt: nowLabel(),
     };
     setQrScanEvents((current) => [event, ...current]);
+    void recordSs4QrScanBackend({
+      rawId,
+      qrId: resolvedQr?.qrId,
+      treeId: event.treeId,
+      actorId: user.id,
+      role: user.role,
+    });
     appendAudit({
       type: scanResult === "success" ? "qr_scan" : "security",
       event: `${event.qrId} scan ${scanResult} for ${event.treeId}; routed to ${routedTo}`,

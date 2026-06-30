@@ -1,4 +1,5 @@
 import { TREES } from "../data/trees.js";
+import crypto from "node:crypto";
 import { getPublicTreeCard, projectGrowth } from "../data/visitorTreeProfiles.js";
 import { VISITOR_INTEREST_IDS, visitorText } from "../services/visitorI18n.js";
 import { buildVisitorRoute, findTree, maskTreeForRole } from "../services/mockTreeService.js";
@@ -64,6 +65,10 @@ function normalizeLanguage(language = "en") {
 function normalizeSessionId(sessionId) {
   const normalized = String(sessionId || DEFAULT_SESSION_ID).trim();
   return normalized || DEFAULT_SESSION_ID;
+}
+
+function createSessionId() {
+  return "vst_" + crypto.randomBytes(18).toString("base64url");
 }
 
 function publicTreePayload(tree, language) {
@@ -136,6 +141,43 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
   return {
     async resetVisitorBackendState() {
       await store.reset();
+    },
+
+    async createGuestVisitorSession({ language = "en", displayName = "Guest Visitor" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const now = new Date().toISOString();
+      const session = await store.createSession({
+        sessionId: createSessionId(),
+        visitorType: "guest",
+        displayName: String(displayName || "Guest Visitor").trim() || "Guest Visitor",
+        language: selectedLanguage,
+        role: "Visitor",
+        createdAt: now,
+        lastSeenAt: now,
+      });
+      return { ok: true, session };
+    },
+
+    async validateVisitorSession(sessionId) {
+      const normalizedSessionId = normalizeSessionId(sessionId);
+      if (normalizedSessionId === DEFAULT_SESSION_ID) {
+        return {
+          ok: false,
+          status: 401,
+          error: "VISITOR_SESSION_REQUIRED",
+          message: "Create a visitor session before using personalized visitor APIs.",
+        };
+      }
+      const session = await store.getSession(normalizedSessionId);
+      if (!session) {
+        return {
+          ok: false,
+          status: 401,
+          error: "INVALID_VISITOR_SESSION",
+          message: "Visitor session is missing or expired.",
+        };
+      }
+      return { ok: true, session };
     },
 
     listVisitorTreeProfiles({ language = "en", query = "", zone = "all" } = {}) {
@@ -317,6 +359,8 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
 const defaultBackend = createVisitorBackend();
 
 export const resetVisitorBackendState = (...args) => defaultBackend.resetVisitorBackendState(...args);
+export const createGuestVisitorSession = (...args) => defaultBackend.createGuestVisitorSession(...args);
+export const validateVisitorSession = (...args) => defaultBackend.validateVisitorSession(...args);
 export const listVisitorTreeProfiles = (...args) => defaultBackend.listVisitorTreeProfiles(...args);
 export const getVisitorTreeIdCard = (...args) => defaultBackend.getVisitorTreeIdCard(...args);
 export const recommendVisitorRoute = (...args) => defaultBackend.recommendVisitorRoute(...args);
