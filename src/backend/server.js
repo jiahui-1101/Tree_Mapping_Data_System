@@ -1,6 +1,7 @@
 import express from "express";
 import { fileURLToPath } from "node:url";
 import { getBackendConfig } from "./backendConfig.js";
+import { createItSupportBackend } from "./itSupportBackendService.js";
 import { createMaintenanceBackend } from "./maintenanceBackendService.js";
 import { createSs4Backend } from "./ss4BackendService.js";
 import { createVisitorBackend } from "./visitorBackendService.js";
@@ -9,6 +10,7 @@ export function createApp({
   backend = createVisitorBackend(),
   maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
   ss4Backend = createSs4Backend({ config: getBackendConfig() }),
+  itSupportBackend = createItSupportBackend({ config: getBackendConfig() }),
 } = {}) {
   const app = express();
   app.use(express.json({ limit: "1mb" }));
@@ -51,6 +53,7 @@ export function createApp({
         visitor: ["/api/visitor/profiles", "/api/visitor/chat", "/api/visitor/routes/recommend"],
         maintenance: ["/api/predictive-alerts", "/api/tasks", "POST /api/predictive-alerts/ALT-001/approve"],
         ss4: ["/api/ss4/map", "/api/ss4/qr-scans", "/api/ss4/spatial/simulate", "/api/ss4/audit-logs"],
+        itSupport: ["/api/it-support/dashboard", "/api/it-support/services", "/api/it-support/users", "/api/it-support/tickets"],
       },
     });
   });
@@ -69,6 +72,7 @@ export function createApp({
       ],
       maintenance: await maintenanceBackend.health(),
       ss4: await ss4Backend.health(),
+      itSupport: await itSupportBackend.health(),
     });
   }));
 
@@ -224,6 +228,56 @@ export function createApp({
     response.json(await ss4Backend.getSecurityAlerts());
   }));
 
+  app.get("/api/it-support/dashboard", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.getDashboard());
+  }));
+
+  app.get("/api/it-support/services", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.listServices());
+  }));
+
+  app.get("/api/it-support/services/:serviceId/logs", asyncRoute(async (request, response) => {
+    response.json(await itSupportBackend.getServiceLogs(request.params.serviceId));
+  }));
+
+  app.post("/api/it-support/services/:serviceId/actions", asyncRoute(async (request, response) => {
+    sendResult(response, await itSupportBackend.runServiceAction({
+      serviceId: request.params.serviceId,
+      action: request.body?.action,
+      actor: request.body?.actor,
+    }));
+  }));
+
+  app.get("/api/it-support/users", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.listUsers());
+  }));
+
+  app.patch("/api/it-support/users/:userId/access", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["action"])) return;
+    sendResult(response, await itSupportBackend.updateUserAccess({
+      userId: request.params.userId,
+      action: request.body.action,
+      actor: request.body.actor,
+    }));
+  }));
+
+  app.get("/api/it-support/tickets", asyncRoute(async (_request, response) => {
+    response.json(await itSupportBackend.listTickets());
+  }));
+
+  app.post("/api/it-support/tickets", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["title"])) return;
+    sendResult(response, await itSupportBackend.createTicket(request.body));
+  }));
+
+  app.patch("/api/it-support/tickets/:ticketId", asyncRoute(async (request, response) => {
+    sendResult(response, await itSupportBackend.updateTicket({
+      ticketId: request.params.ticketId,
+      patch: request.body || {},
+      actor: request.body?.actor,
+    }));
+  }));
+
   app.use((request, response) => {
     response.status(404).json({ ok: false, error: "NOT_FOUND", message: `No backend route for ${request.method} ${request.path}` });
   });
@@ -245,6 +299,7 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
     backend: createVisitorBackend({ config }),
     maintenanceBackend: createMaintenanceBackend({ config }),
     ss4Backend: createSs4Backend({ config }),
+    itSupportBackend: createItSupportBackend({ config }),
   }).listen(config.port, () => {
     console.log(`TBJ shared backend listening on http://localhost:${config.port}`);
   });
