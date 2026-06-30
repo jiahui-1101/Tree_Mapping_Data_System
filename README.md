@@ -88,7 +88,9 @@ The prototype supports four user roles: **Admin**, **Ranger**, **Visitor**, and 
       <a href="src/features/it-support/ITDashboardPage.jsx">ITDashboardPage.jsx</a><br>
       <a href="src/features/it-support/SystemMonitoringPage.jsx">SystemMonitoringPage.jsx</a><br>
       <a href="src/features/it-support/UserAccessPage.jsx">UserAccessPage.jsx</a><br>
-      <a href="src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a>
+      <a href="src/features/it-support/IncidentTicketsPage.jsx">IncidentTicketsPage.jsx</a><br>
+      <a href="src/backend/itSupportBackendService.js">itSupportBackendService.js</a><br>
+      <a href="docs/IT_SUPPORT_BACKEND.md">IT_SUPPORT_BACKEND.md</a>
     </td>
   </tr>
   <tr>
@@ -175,6 +177,20 @@ Subsystem 4 is implemented in `src/backend/ss4BackendService.js` and runs inside
 | Audit and security monitoring | `GET /api/ss4/audit-logs`, `GET /api/ss4/security-alerts` |
 
 The SS4 production database design is documented in `docs/database/ss4_schema.sql`, and the full backend notes are in `docs/SS4_BACKEND.md`. Spatial planning can use Gemini/OpenAI through `SS4_AI_PROVIDER`, then falls back to local suitability rules. The QR scanner uses browser camera APIs with a manual QR fallback, and the SS4 map page includes a Google Maps embed reference with a local 3D map fallback.
+
+### IT Support Backend API
+
+IT Support operations are implemented in `src/backend/itSupportBackendService.js` and run inside the same Express backend. The module supports dashboard metrics, system service monitoring, access-control actions, incident ticket handling, service logs, audit events, JSON runtime persistence, and optional MySQL persistence through `IT_SUPPORT_STORE=mysql`.
+
+| Feature | Endpoint |
+| --- | --- |
+| IT dashboard summary | `GET /api/it-support/dashboard` |
+| Service monitoring and logs | `GET /api/it-support/services`, `GET /api/it-support/services/:serviceId/logs` |
+| Service actions | `POST /api/it-support/services/:serviceId/actions` |
+| User access control | `GET /api/it-support/users`, `PATCH /api/it-support/users/:userId/access` |
+| Incident tickets | `GET/POST /api/it-support/tickets`, `PATCH /api/it-support/tickets/:ticketId` |
+
+The IT Support production database design is documented in `docs/database/it_support_schema.sql`, and full backend notes are in `docs/IT_SUPPORT_BACKEND.md`.
 
 ## Demo Accounts
 
