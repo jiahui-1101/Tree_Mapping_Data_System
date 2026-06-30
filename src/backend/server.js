@@ -140,6 +140,11 @@ export function createApp({
     sendResult(response, await fieldBackend.updateTaskStatus(request.params.taskId, request.body.status));
   }));
 
+  app.post("/api/ss2/tasks/:taskId/reassign", asyncRoute(async (request, response) => {
+    if (!requireBody(request, response, ["newRanger"])) return;
+    sendResult(response, await fieldBackend.reassignTask(request.params.taskId, request.body));
+  }));
+
   app.get("/api/ss2/reports", asyncRoute(async (request, response) => {
     response.json({ ok: true, data: await fieldBackend.listReports(request.query) });
   }));

@@ -31,7 +31,7 @@ import { TREES } from "./data/trees.js";
 import { ROLE } from "./models.js";
 import { canAccessPage } from "./services/mockAuthService.js";
 import { nextTaskId, updateTreeRecord } from "./services/adminService.js";
-import { analyzeFieldPhotoBackend, createFieldTaskBackend, fetchFieldBackendState, submitFieldReportBackend, updateFieldTaskStatusBackend } from "./services/fieldApiService.js";
+import { analyzeFieldPhotoBackend, createFieldTaskBackend, fetchFieldBackendState, reassignFieldTaskBackend, submitFieldReportBackend, updateFieldTaskStatusBackend } from "./services/fieldApiService.js";
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
 import { collectVisitorTreeBackend, recordVisitorScanBackend } from "./services/visitorApiService.js";
 import { visitorText } from "./services/visitorI18n.js";
@@ -194,11 +194,11 @@ export default function App() {
       const report = result.report;
       setFieldReports(result.reports || ((current) => [report, ...current]));
       if (result.tasks) setTasks(result.tasks);
-      setTrees((current) => current.map((item) => item.id === report.treeId ? {
+      setTrees((current) => current.map((item) => item.id === report.treeId ? (result.tree || {
         ...item,
         status: report.observedStatus,
         health: report.observedStatus === "critical" ? 38 : report.observedStatus === "monitor" ? 68 : 94,
-      } : item));
+      }) : item));
       appendAudit({
         type: "edit",
         event: `${report.id} submitted for ${report.treeId}; Trees.health_status updated to ${report.observedStatus}`,
@@ -232,11 +232,11 @@ export default function App() {
     const report = result.report;
     setFieldReports(result.reports || ((current) => [report, ...current]));
     if (result.tasks) setTasks(result.tasks);
-    setTrees((current) => current.map((item) => item.id === report.treeId ? {
+    setTrees((current) => current.map((item) => item.id === report.treeId ? (result.tree || {
       ...item,
       status: report.observedStatus,
       health: report.observedStatus === "critical" ? 38 : report.observedStatus === "monitor" ? 68 : 94,
-    } : item));
+    }) : item));
     appendAudit({
       type: "edit",
       event: `${report.id} submitted as completion evidence for ${task.id}`,
@@ -250,6 +250,16 @@ export default function App() {
     if (payload.reports) setFieldReports(payload.reports);
     if (payload.rangers) setRangers(payload.rangers);
     if (payload.schedule !== undefined) setFieldSchedule(payload.schedule);
+  };
+  const reassignTask = async (taskId, newRanger) => {
+    const result = await reassignFieldTaskBackend({ taskId, newRanger, reassignedBy: user.name });
+    if (!result?.task) {
+      showToast("Task reassignment failed. Check SS2 backend connection.");
+      return null;
+    }
+    if (result.tasks) setTasks(result.tasks);
+    showToast(`${taskId} reassigned to ${result.task.ranger}.`);
+    return result.task;
   };
   const addTask = (taskDraft) => {
     const task = { ...taskDraft, id: taskDraft.id || nextTaskId(tasks), status: taskDraft.status || "pending" };
@@ -335,7 +345,7 @@ export default function App() {
     case "maintenance": content = <MaintenancePage {...pageProps} onAddTask={addTask} onNavigate={navigate} />; break;
     case "schedule": content = <SchedulePage {...pageProps} onAddTask={addTask} />; break;
     case "rangers": content = <RangerManagementPage {...pageProps} />; break;
-    case "tasks": content = <TaskTrackerPage {...pageProps} onUpdateTask={updateTask} />; break;
+    case "tasks": content = <TaskTrackerPage {...pageProps} onUpdateTask={updateTask} onReassignTask={reassignTask} />; break;
     case "ranger-tasks": content = <RangerTasksPage {...pageProps} onUpdateTask={updateTask} onSubmitTaskEvidence={submitTaskEvidence} onOpenScanner={() => setScannerOpen(true)} />; break;
     case "ranger-reports": content = <RangerReportsPage {...pageProps} />; break;
     case "qr": content = <QRPage role={user.role} language={language} onOpenScanner={() => setScannerOpen(true)} />; break;
