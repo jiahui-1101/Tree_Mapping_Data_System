@@ -11,6 +11,7 @@ const DEFAULT_STATE = Object.freeze({
 
 function cloneState(state = DEFAULT_STATE) {
   return {
+    sessions: Object.fromEntries(Object.entries(state.sessions || {}).map(([sessionId, session]) => [sessionId, { ...session }])),
     collections: Object.fromEntries(Object.entries(state.collections || {}).map(([sessionId, treeIds]) => [sessionId, [...new Set(treeIds || [])]])),
     scans: [...(state.scans || [])],
     chatLogs: [...(state.chatLogs || [])],
