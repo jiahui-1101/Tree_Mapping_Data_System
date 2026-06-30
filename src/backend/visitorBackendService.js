@@ -67,6 +67,10 @@ function normalizeSessionId(sessionId) {
   return normalized || DEFAULT_SESSION_ID;
 }
 
+function createSessionId() {
+  return "vst_" + crypto.randomBytes(18).toString("base64url");
+}
+
 function publicTreePayload(tree, language) {
   const maskedTree = maskTreeForRole(tree, ROLE.VISITOR);
   return getPublicTreeCard(maskedTree, language);
