@@ -43,6 +43,24 @@ const ROLE_LABEL = {
   [ROLE.VISITOR]: "Visitor",
   [ROLE.IT_SUPPORT]: "IT Support",
 };
+const AUTH_STORAGE_KEY = "tbj.currentUser";
+const FIELD_SYNC_INTERVAL_MS = 5000;
+
+function loadSavedUser() {
+  if (typeof window === "undefined") return null;
+  try {
+    return JSON.parse(window.localStorage.getItem(AUTH_STORAGE_KEY) || "null");
+  } catch {
+    window.localStorage.removeItem(AUTH_STORAGE_KEY);
+    return null;
+  }
+}
+
+function saveUserSession(user) {
+  if (typeof window === "undefined") return;
+  if (user) window.localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
+  else window.localStorage.removeItem(AUTH_STORAGE_KEY);
+}
 
 function nowLabel() {
   return "Just now";
@@ -66,8 +84,11 @@ function getQrForInput(rawValue, qrCodes = []) {
 }
 
 export default function App() {
-  const [user, setUser] = useState(null);
-  const [activePage, setActivePage] = useState("dashboard");
+  const [user, setUser] = useState(loadSavedUser);
+  const [activePage, setActivePage] = useState(() => {
+    const savedUser = loadSavedUser();
+    return savedUser ? DEFAULT_PAGE[savedUser.role] : "dashboard";
+  });
   const [trees, setTrees] = useState(TREES);
   const [tasks, setTasks] = useState([]);
   const [fieldReports, setFieldReports] = useState([]);
@@ -85,20 +106,48 @@ export default function App() {
   const [toast, setToast] = useState("");
   const showToast = useCallback((message) => setToast(message), []);
 
-  useEffect(() => {
-    if (!user) return;
+  const syncFieldBackendState = useCallback(() => {
     let active = true;
-    fetchFieldBackendState().then((state) => {
+    const request = fetchFieldBackendState().then((state) => {
       if (!active || !state) return;
       setTasks(state.tasks);
       setFieldReports(state.reports);
       setRangers(state.rangers);
       setFieldSchedule(state.schedule);
     });
+    return { request, cancel: () => { active = false; } };
+  }, []);
+
+  useEffect(() => {
+    if (!user) return undefined;
+    const sync = syncFieldBackendState();
+    const intervalId = window.setInterval(() => {
+      syncFieldBackendState();
+    }, FIELD_SYNC_INTERVAL_MS);
     return () => {
-      active = false;
+      sync.cancel();
+      window.clearInterval(intervalId);
     };
-  }, [user]);
+  }, [syncFieldBackendState, user]);
+
+  const handleLogin = (nextUser) => {
+    saveUserSession(nextUser);
+    setUser(nextUser);
+    setActivePage(DEFAULT_PAGE[nextUser.role]);
+    setAuditLogs((current) => [{
+      time: nowLabel(),
+      type: "login",
+      actor: nextUser.name,
+      role: ROLE_LABEL[nextUser.role],
+      event: `Signed in as ${ROLE_LABEL[nextUser.role]}`,
+      severity: "low",
+    }, ...current]);
+  };
+
+  const handleLogout = () => {
+    saveUserSession(null);
+    setUser(null);
+  };
 
   const appendAudit = useCallback((entry) => {
     setAuditLogs((current) => [{
@@ -112,18 +161,7 @@ export default function App() {
   }, [user]);
 
   if (!user) {
-    return <LoginPage onLogin={(nextUser) => {
-      setUser(nextUser);
-      setActivePage(DEFAULT_PAGE[nextUser.role]);
-      setAuditLogs((current) => [{
-        time: nowLabel(),
-        type: "login",
-        actor: nextUser.name,
-        role: ROLE_LABEL[nextUser.role],
-        event: `Signed in as ${ROLE_LABEL[nextUser.role]}`,
-        severity: "low",
-      }, ...current]);
-    }} />;
+    return <LoginPage onLogin={handleLogin} />;
   }
 
   const navigate = (page) => {
@@ -289,7 +327,7 @@ export default function App() {
   }
 
   return (
-    <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={() => setUser(null)}>
+    <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={handleLogout}>
       {content}
       {scannerOpen && <QRScanner role={user.role} trees={trees} qrCodes={qrCodes} language={language} onClose={() => setScannerOpen(false)} onComplete={completeScan} onScanEvent={recordQrScan} />}
       {scannedTree && user.role === ROLE.VISITOR && <TreeIdCardModal tree={scannedTree} language={language} onClose={() => setScannedTree(null)} onCollect={(tree) => { collect(tree); setScannedTree(null); }} />}
