@@ -330,8 +330,8 @@ test("growth simulation produces distinct visual model values", () => {
 });
 
 test("SS3 backend returns visitor-safe digital tree ID cards", async () => {
-  await resetVisitorBackendState();
-  const result = getVisitorTreeIdCard("TBJ-005", { language: "zh", growthYears: 25 });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const result = backend.getVisitorTreeIdCard("TBJ-005", { language: "zh", growthYears: 25 });
   assert.equal(result.ok, true);
   assert.equal(result.tree.health, undefined);
   assert.equal(result.tree.status, undefined);
@@ -344,12 +344,13 @@ test("SS3 backend returns visitor-safe digital tree ID cards", async () => {
 });
 
 test("SS3 backend validates route preferences and provides AI fallback route", async () => {
-  const missing = await recommendVisitorRoute({ preferences: [], language: "bm" });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const missing = await backend.recommendVisitorRoute({ preferences: [], language: "bm" });
   assert.equal(missing.ok, false);
   assert.equal(missing.status, 400);
   assert.match(missing.message, /sekurang-kurangnya/i);
 
-  const route = await recommendVisitorRoute({ preferences: ["rare", "ancient"], duration: 90, language: "en", aiAvailable: false });
+  const route = await backend.recommendVisitorRoute({ preferences: ["rare", "ancient"], duration: 90, language: "en", aiAvailable: false });
   assert.equal(route.ok, true);
   assert.equal(route.fallback, true);
   assert.equal(route.estimatedDuration, 90);
@@ -358,7 +359,8 @@ test("SS3 backend validates route preferences and provides AI fallback route", a
 });
 
 test("SS3 backend chatbot is multilingual and hides sensitive operations", async () => {
-  const reply = await answerVisitorChat({ question: "为什么隐藏珍稀物种位置？", language: "zh" });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }), config: { aiProvider: "mock", aiTimeoutMs: 100 } });
+  const reply = await backend.answerVisitorChat({ question: "为什么隐藏珍稀物种位置？", language: "zh" });
   assert.equal(reply.ok, true);
   assert.equal(reply.intent, "rare_species_privacy");
   assert.equal(reply.provider, "Local rule engine");
@@ -367,25 +369,25 @@ test("SS3 backend chatbot is multilingual and hides sensitive operations", async
 });
 
 test("SS3 backend collection and scan analytics support visitor discovery tracking", async () => {
-  await resetVisitorBackendState();
-  const first = await addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
-  const duplicate = await addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const first = await backend.addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
+  const duplicate = await backend.addTreeToVisitorCollection({ sessionId: "visitor-a", treeId: "TBJ-001", language: "en" });
   assert.equal(first.isNew, true);
   assert.equal(duplicate.isNew, false);
-  assert.equal((await getVisitorCollection({ sessionId: "visitor-a" })).collection.totalCollected, 1);
+  assert.equal((await backend.getVisitorCollection({ sessionId: "visitor-a" })).collection.totalCollected, 1);
 
-  const scan = await recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
+  const scan = await backend.recordVisitorScan({ sessionId: "visitor-a", treeId: "TBJ-004", language: "en" });
   assert.equal(scan.ok, true);
   assert.equal(scan.collection.totalCollected, 2);
-  const analytics = await getVisitorAnalytics();
+  const analytics = await backend.getVisitorAnalytics();
   assert.equal(analytics.totalScans, 1);
   assert.equal(analytics.byZone.Tanaman, 1);
 });
 
 test("SS3 backend exposes scan events in SS4 QRScanEvents shape", async () => {
-  await resetVisitorBackendState();
-  await recordVisitorScan({ sessionId: "ss4-link", treeId: "TBJ-002", language: "en" });
-  const payload = await getSs4QrScanEvents();
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  await backend.recordVisitorScan({ sessionId: "ss4-link", treeId: "TBJ-002", language: "en" });
+  const payload = await backend.getSs4QrScanEvents();
   assert.equal(payload.ok, true);
   assert.equal(payload.targetModel, "SS4.QRScanEvents");
   assert.deepEqual(Object.keys(payload.events[0]), [
@@ -417,9 +419,17 @@ test("SS3 Express API exposes visitor backend endpoints", async () => {
     assert.equal(tree.tree.status, undefined);
     assert.equal(tree.privacy.protectedCoordinatesMasked, true);
 
+    const session = await fetch(`${baseUrl}/api/visitor/sessions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(session.ok, true);
+    assert.match(session.session.sessionId, /^vst_/);
+
     const collection = await fetch(`${baseUrl}/api/visitor/collection`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-Visitor-Session": "api-test" },
+      headers: { "Content-Type": "application/json", "X-Visitor-Session": session.session.sessionId },
       body: JSON.stringify({ treeId: "TBJ-002", language: "en" }),
     }).then((response) => response.json());
     assert.equal(collection.ok, true);
@@ -449,6 +459,14 @@ test("SS3 Express API validates visitor request payloads", async () => {
     }).then((response) => response.json());
     assert.equal(invalidRoute.ok, false);
     assert.match(invalidRoute.message, /preferences must be an array/);
+
+    const blockedCollection = await fetch(`${baseUrl}/api/visitor/collection`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ treeId: "TBJ-001", language: "en" }),
+    }).then((response) => response.json());
+    assert.equal(blockedCollection.ok, false);
+    assert.equal(blockedCollection.error, "VISITOR_SESSION_REQUIRED");
   } finally {
     await new Promise((resolve) => server.close(resolve));
   }
