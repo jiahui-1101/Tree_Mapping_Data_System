@@ -31,6 +31,12 @@ export function createApp({
     }
   };
   const sessionId = (request) => request.headers["x-visitor-session"] || request.query.sessionId || request.body?.sessionId;
+  const requireVisitorSession = async (request, response) => {
+    const result = await backend.validateVisitorSession(sessionId(request));
+    if (result.ok) return result.session;
+    sendResult(response, result);
+    return null;
+  };
   const badRequest = (response, message, error = "VALIDATION_ERROR") => response.status(400).json({ ok: false, error, message });
   const requireBody = (request, response, requiredFields = []) => {
     if (!request.body || typeof request.body !== "object") {
