@@ -156,9 +156,11 @@ export function createApp({
 
   app.post("/api/visitor/chat", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["question"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.answerVisitorChat({
       ...request.body,
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
     }));
   }));
 
