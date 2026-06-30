@@ -175,8 +175,10 @@ export function createApp({
 
   app.post("/api/visitor/collection", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["treeId"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.addTreeToVisitorCollection({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       treeId: request.body.treeId,
       language: request.body.language,
     }));
