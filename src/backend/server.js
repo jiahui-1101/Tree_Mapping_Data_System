@@ -113,6 +113,13 @@ export function createApp({
     sendResult(response, await maintenanceBackend.reset());
   }));
 
+  app.post("/api/visitor/sessions", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.createGuestVisitorSession({
+      language: request.body?.language,
+      displayName: request.body?.displayName,
+    }));
+  }));
+
   app.get("/api/visitor/profiles", (request, response) => {
     response.json({
       ok: true,
