@@ -97,7 +97,7 @@ export async function recommendRouteFromBackend({ preferences, duration, languag
 export async function fetchVisitorProfiles({ language, query = "", zone = "all", trees = TREES }) {
   try {
     const params = new URLSearchParams({ language, query, zone });
-    const payload = await requestVisitorApi(`/api/visitor/profiles?${params.toString()}`);
+    const payload = await requestVisitorApi(`/api/visitor/profiles?${params.toString()}`, { requireSession: false });
     return {
       ok: true,
       profiles: payload.trees || [],
@@ -147,7 +147,7 @@ export async function recordVisitorScanBackend({ tree, language, source = "qr" }
 
 export async function fetchVisitorTreeCard({ tree, language, growthYears = 10 }) {
   try {
-    return await requestVisitorApi(`/api/visitor/trees/${tree.id}?language=${encodeURIComponent(language)}&growthYears=${growthYears}`);
+    return await requestVisitorApi(`/api/visitor/trees/${tree.id}?language=${encodeURIComponent(language)}&growthYears=${growthYears}`, { requireSession: false });
   } catch {
     return {
       ok: true,
