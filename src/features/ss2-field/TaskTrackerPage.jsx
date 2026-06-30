@@ -23,7 +23,7 @@ function taskReport(fieldReports, task) {
   return fieldReports.find((report) => report.taskId === task.id) || null;
 }
 
-export default function TaskTrackerPage({ tasks, fieldReports = [], onUpdateTask, showToast }) {
+export default function TaskTrackerPage({ tasks, fieldReports = [], rangers: rangerAccounts = [], onUpdateTask, onReassignTask, showToast }) {
   const [selected, setSelected] = useState(null);
   const [query, setQuery] = useState("");
   const [ranger, setRanger] = useState("all");
@@ -31,7 +31,13 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], onUpdateTask
   const [priority, setPriority] = useState("all");
   const [source, setSource] = useState("all");
   const [sortBy, setSortBy] = useState("priority");
-  const rangers = useMemo(() => [...new Set(tasks.map((task) => task.ranger))], [tasks]);
+  const [reassignTarget, setReassignTarget] = useState("");
+  const [reassigning, setReassigning] = useState(false);
+  const taskRangers = useMemo(() => [...new Set(tasks.map((task) => task.ranger))], [tasks]);
+  const assignableRangers = useMemo(() => {
+    const activeAccounts = rangerAccounts.filter((item) => item.status !== "inactive").map((item) => item.name);
+    return [...new Set([...activeAccounts, ...taskRangers])].filter(Boolean);
+  }, [rangerAccounts, taskRangers]);
   const sources = useMemo(() => [...new Set(tasks.map((task) => task.source))], [tasks]);
   const filteredTasks = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -55,6 +61,16 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], onUpdateTask
     showToast(`Task ${selected.id} updated to ${nextStatus}. Ranger lifecycle state synced.`);
     setSelected(null);
   };
+  const reassign = async () => {
+    if (!selected || !reassignTarget) {
+      showToast("Choose a ranger before reassigning this task.");
+      return;
+    }
+    setReassigning(true);
+    const task = await onReassignTask?.(selected.id, reassignTarget);
+    setReassigning(false);
+    if (task) setSelected(task);
+  };
 
   return (
     <>
@@ -62,7 +78,7 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], onUpdateTask
         <div className="page-toolbar task-tracker-toolbar">
           <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search task, tree, ranger, source or notes..." />
           <div className="toolbar-actions">
-            <select value={ranger} onChange={(event) => setRanger(event.target.value)}><option value="all">All rangers</option>{rangers.map((item) => <option key={item}>{item}</option>)}</select>
+            <select value={ranger} onChange={(event) => setRanger(event.target.value)}><option value="all">All rangers</option>{taskRangers.map((item) => <option key={item}>{item}</option>)}</select>
             <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All status</option><option value="pending">Pending</option><option value="in-progress">In progress</option><option value="completed">Completed</option><option value="escalated">Escalated</option></select>
             <select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="all">All priority</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option></select>
             <select value={source} onChange={(event) => setSource(event.target.value)}><option value="all">All source</option>{sources.map((item) => <option key={item}>{item}</option>)}</select>
@@ -129,6 +145,17 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], onUpdateTask
               )}
             </div>
           )}
+          <div className="report-analysis-panel report-analysis-compact">
+            <span className="premium-eyebrow">Admin reassignment</span>
+            <p>If the evidence is not convincing, keep the ranger report as history and dispatch the task again to another ranger.</p>
+            <div className="page-toolbar reassign-toolbar">
+              <select value={reassignTarget} onChange={(event) => setReassignTarget(event.target.value)}>
+                <option value="">Choose ranger</option>
+                {assignableRangers.filter((item) => item !== selected.ranger).map((item) => <option value={item} key={item}>{item}</option>)}
+              </select>
+              <button className="button button-outline" disabled={!reassignTarget || reassigning} onClick={reassign}>{reassigning ? "Reassigning..." : "Reassign Task"}</button>
+            </div>
+          </div>
           <div className="button-row">
             <button className="button" disabled={!latestReport} onClick={() => update("completed")}>Confirm Evidence Reviewed</button>
             <button className="button button-outline" onClick={() => update("in-progress")}>Send Back To Treatment</button>

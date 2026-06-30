@@ -41,6 +41,19 @@ function treeById(id) {
   return TREES.find((tree) => tree.id.toLowerCase() === String(id || "").toLowerCase()) || null;
 }
 
+function healthScoreForStatus(status) {
+  if (status === "critical") return 38;
+  if (status === "monitor") return 68;
+  return 94;
+}
+
+function syncTreeRecordFromReport(tree, observedStatus) {
+  if (!tree) return null;
+  tree.status = observedStatus;
+  tree.health = healthScoreForStatus(observedStatus);
+  return tree;
+}
+
 function nextFieldTaskId(tasks = []) {
   const max = tasks.reduce((highest, task) => {
     const value = Number(String(task.id).match(/TSK-(\d+)/)?.[1] || 0);
@@ -381,6 +394,35 @@ function createMemoryFieldBackend() {
       } : item);
       return ok({ task: await this.findTask(id), tasks });
     },
+    async reassignTask(id, { newRanger = "", reassignedBy = "Admin" } = {}) {
+      const task = await this.findTask(id);
+      if (!task) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
+      const rangerName = newRanger.trim();
+      if (!rangerName) return fail(400, "VALIDATION_ERROR", "New ranger is required.");
+      const ranger = rangers.find((item) => item.name === rangerName || item.id === rangerName);
+      const targetName = ranger?.name || rangerName;
+      const now = new Date().toISOString();
+      tasks = tasks.map((item) => taskMatches(item, id) ? {
+        ...item,
+        ranger: targetName,
+        status: "pending",
+        startedAt: null,
+        completedAt: null,
+        dispatchedAt: now,
+        notes: `${item.notes || ""} | Reassigned by ${reassignedBy} to ${targetName}.`.trim(),
+      } : item);
+      notifications = [{
+        id: notifications.length + 1,
+        rangerId: ranger?.id || targetName,
+        rangerName: targetName,
+        taskId: task.id,
+        payloadSummary: `Task reassigned to you: ${task.title}`,
+        deliveryStatus: "Sent",
+        sentAt: now,
+        readAt: null,
+      }, ...notifications];
+      return ok({ task: await this.findTask(id), tasks, notifications });
+    },
     async listReports(filters = {}) {
       return filterFieldReports(reports, filters.ranger || "", filters);
     },
@@ -395,8 +437,10 @@ function createMemoryFieldBackend() {
       if (!rangerName.trim()) return fail(400, "VALIDATION_ERROR", "Ranger name is required.");
       const report = createFieldReport({ draft: { ...draft, treeId: tree.id }, tree, rangerName, tasks, existingReports: reports });
       reports = [report, ...reports];
-      if (report.taskId) tasks = tasks.map((task) => task.id === report.taskId ? { ...task, status: "completed" } : task);
-      return ok({ report, task: report.taskId ? tasks.find((task) => task.id === report.taskId) : null, tasks, reports });
+      const completedAt = new Date().toISOString();
+      if (report.taskId) tasks = tasks.map((task) => task.id === report.taskId ? { ...task, status: "completed", completedAt } : task);
+      const updatedTree = syncTreeRecordFromReport(tree, report.observedStatus);
+      return ok({ report, task: report.taskId ? tasks.find((task) => task.id === report.taskId) : null, tasks, reports, tree: updatedTree });
     },
     async getDashboard() {
       const activeTasks = tasks.filter((task) => task.status === "pending" || task.status === "in-progress").length;
@@ -702,6 +746,38 @@ function createMysqlFieldBackend(config) {
       if (!result.affectedRows) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
       return ok({ task: await this.findTask(id), tasks: await this.listTasks() });
     },
+    async reassignTask(id, { newRanger = "", reassignedBy = "Admin" } = {}) {
+      const task = await this.findTask(id);
+      if (!task) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
+      const rangerName = newRanger.trim();
+      if (!rangerName) return fail(400, "VALIDATION_ERROR", "New ranger is required.");
+      const [rangerRows] = await pool.execute("SELECT * FROM ss2_rangers WHERE id = ? OR name = ? LIMIT 1", [rangerName, rangerName]);
+      const targetName = rangerRows[0]?.name || rangerName;
+      const targetId = rangerRows[0]?.id || targetName;
+      const reassignmentNote = `${task.notes || ""} | Reassigned by ${reassignedBy} to ${targetName}.`.trim();
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        await connection.execute(
+          `UPDATE ss2_field_tasks
+           SET ranger = ?, status = 'pending', started_at = NULL, completed_at = NULL, dispatched_at = CURRENT_TIMESTAMP, notes = ?
+           WHERE id = ?`,
+          [targetName, reassignmentNote, id]
+        );
+        await connection.execute(
+          `INSERT INTO ss2_push_notifications (ranger_id, ranger_name, task_id, payload_summary, delivery_status)
+           VALUES (?, ?, ?, ?, 'Sent')`,
+          [targetId, targetName, task.id, `Task reassigned to you: ${task.title}`]
+        );
+        await connection.commit();
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+      return ok({ task: await this.findTask(id), tasks: await this.listTasks() });
+    },
     async listReports(filters = {}) {
       const [rows] = await pool.query("SELECT * FROM ss2_field_reports ORDER BY created_at DESC, id DESC");
       return filterFieldReports(rows.map(rowToReport), filters.ranger || "", filters);
@@ -728,9 +804,18 @@ function createMysqlFieldBackend(config) {
           existingReports: reportRows.map(rowToReport),
         });
         await insertReport(connection, report);
-        if (report.taskId) await connection.execute("UPDATE ss2_field_tasks SET status = 'completed' WHERE id = ?", [report.taskId]);
+        if (report.taskId) await connection.execute("UPDATE ss2_field_tasks SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?", [report.taskId]);
+        const updatedTree = syncTreeRecordFromReport(tree, report.observedStatus);
+        try {
+          await connection.execute(
+            "UPDATE trees SET health_status = ?, health_score = ? WHERE id = ?",
+            [report.observedStatus, healthScoreForStatus(report.observedStatus), tree.id]
+          );
+        } catch (error) {
+          if (!["ER_NO_SUCH_TABLE", "ER_BAD_FIELD_ERROR"].includes(error.code)) throw error;
+        }
         await connection.commit();
-        return ok({ report, task: report.taskId ? await this.findTask(report.taskId) : null, tasks: await this.listTasks(), reports: await this.listReports() });
+        return ok({ report, task: report.taskId ? await this.findTask(report.taskId) : null, tasks: await this.listTasks(), reports: await this.listReports(), tree: updatedTree });
       } catch (error) {
         await connection.rollback();
         throw error;

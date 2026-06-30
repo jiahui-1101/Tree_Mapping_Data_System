@@ -110,6 +110,17 @@ export async function updateFieldTaskStatusBackend({ taskId, status }) {
   }
 }
 
+export async function reassignFieldTaskBackend({ taskId, newRanger, reassignedBy }) {
+  try {
+    return await requestFieldApi(`/api/ss2/tasks/${encodeURIComponent(taskId)}/reassign`, {
+      method: "POST",
+      body: { newRanger, reassignedBy },
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function submitFieldReportBackend({ treeId, rangerName, draft }) {
   try {
     return await requestFieldApi("/api/ss2/reports", {
