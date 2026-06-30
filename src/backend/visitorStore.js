@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const DEFAULT_STATE = Object.freeze({
+  sessions: {},
   collections: {},
   scans: [],
   chatLogs: [],
@@ -10,6 +11,7 @@ const DEFAULT_STATE = Object.freeze({
 
 function cloneState(state = DEFAULT_STATE) {
   return {
+    sessions: Object.fromEntries(Object.entries(state.sessions || {}).map(([sessionId, session]) => [sessionId, { ...session }])),
     collections: Object.fromEntries(Object.entries(state.collections || {}).map(([sessionId, treeIds]) => [sessionId, [...new Set(treeIds || [])]])),
     scans: [...(state.scans || [])],
     chatLogs: [...(state.chatLogs || [])],
@@ -52,6 +54,19 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
       loaded = true;
       state = cloneState(nextState);
       await save();
+    },
+
+    async createSession(session) {
+      await ensureLoaded();
+      state.sessions[session.sessionId] = { ...session };
+      await save();
+      return { ...state.sessions[session.sessionId] };
+    },
+
+    async getSession(sessionId) {
+      await ensureLoaded();
+      const session = state.sessions[sessionId];
+      return session ? { ...session } : null;
     },
 
     async getCollection(sessionId) {

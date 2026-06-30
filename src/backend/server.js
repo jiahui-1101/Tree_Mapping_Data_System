@@ -31,6 +31,12 @@ export function createApp({
     }
   };
   const sessionId = (request) => request.headers["x-visitor-session"] || request.query.sessionId || request.body?.sessionId;
+  const requireVisitorSession = async (request, response) => {
+    const result = await backend.validateVisitorSession(sessionId(request));
+    if (result.ok) return result.session;
+    sendResult(response, result);
+    return null;
+  };
   const badRequest = (response, message, error = "VALIDATION_ERROR") => response.status(400).json({ ok: false, error, message });
   const requireBody = (request, response, requiredFields = []) => {
     if (!request.body || typeof request.body !== "object") {
@@ -107,6 +113,13 @@ export function createApp({
     sendResult(response, await maintenanceBackend.reset());
   }));
 
+  app.post("/api/visitor/sessions", asyncRoute(async (request, response) => {
+    sendResult(response, await backend.createGuestVisitorSession({
+      language: request.body?.language,
+      displayName: request.body?.displayName,
+    }));
+  }));
+
   app.get("/api/visitor/profiles", (request, response) => {
     response.json({
       ok: true,
@@ -133,31 +146,39 @@ export function createApp({
     if (!Array.isArray(request.body.preferences)) {
       return badRequest(response, "preferences must be an array.");
     }
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.recommendVisitorRoute({
       ...request.body,
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
     }));
   }));
 
   app.post("/api/visitor/chat", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["question"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.answerVisitorChat({
       ...request.body,
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
     }));
   }));
 
   app.get("/api/visitor/collection", asyncRoute(async (request, response) => {
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.getVisitorCollection({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       language: request.query.language,
     }));
   }));
 
   app.post("/api/visitor/collection", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["treeId"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.addTreeToVisitorCollection({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       treeId: request.body.treeId,
       language: request.body.language,
     }));
@@ -165,8 +186,10 @@ export function createApp({
 
   app.post("/api/visitor/scans", asyncRoute(async (request, response) => {
     if (!requireBody(request, response, ["treeId"])) return;
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.recordVisitorScan({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       treeId: request.body.treeId,
       language: request.body.language,
       source: request.body.source,

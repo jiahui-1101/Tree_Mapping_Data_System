@@ -5,6 +5,7 @@ import { visitorText } from "./visitorI18n.js";
 
 const API_BASE = import.meta.env.VITE_SS3_API_BASE || "http://localhost:4174";
 const SESSION_KEY = "tbj.visitor.session";
+const SESSION_META_KEY = "tbj.visitor.session.meta";
 
 function getStorage(storage) {
   if (storage) return storage;
@@ -23,12 +24,47 @@ export function getVisitorSessionId(storage) {
   return id;
 }
 
-async function requestVisitorApi(path, { method = "GET", body, sessionId = getVisitorSessionId() } = {}) {
+function saveVisitorSession(session, storage) {
+  const source = getStorage(storage);
+  if (!session?.sessionId || !source) return session?.sessionId || "";
+  source.setItem(SESSION_KEY, session.sessionId);
+  source.setItem(SESSION_META_KEY, JSON.stringify(session));
+  return session.sessionId;
+}
+
+export async function createVisitorGuestSession({ language = "en", displayName = "Guest Visitor", storage } = {}) {
+  const response = await fetch(`${API_BASE}/api/visitor/sessions`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ language, displayName }),
+  });
+  const payload = await response.json();
+  if (!response.ok || payload.ok === false) {
+    throw new Error(payload.message || payload.error || "Visitor session request failed");
+  }
+  return saveVisitorSession(payload.session, storage);
+}
+
+async function getVisitorBackendSessionId({ language, storage } = {}) {
+  const source = getStorage(storage);
+  const existing = source?.getItem(SESSION_KEY);
+  if (existing?.startsWith("vst_")) return existing;
+  try {
+    return await createVisitorGuestSession({ language, storage });
+  } catch {
+    return getVisitorSessionId(storage);
+  }
+}
+
+async function requestVisitorApi(path, { method = "GET", body, sessionId, language, requireSession = true } = {}) {
+  const visitorSessionId = requireSession
+    ? sessionId || await getVisitorBackendSessionId({ language: language || body?.language })
+    : sessionId;
   const response = await fetch(`${API_BASE}${path}`, {
     method,
     headers: {
       "Content-Type": "application/json",
-      "X-Visitor-Session": sessionId,
+      ...(visitorSessionId ? { "X-Visitor-Session": visitorSessionId } : {}),
     },
     body: body ? JSON.stringify(body) : undefined,
   });
@@ -61,7 +97,7 @@ export async function recommendRouteFromBackend({ preferences, duration, languag
 export async function fetchVisitorProfiles({ language, query = "", zone = "all", trees = TREES }) {
   try {
     const params = new URLSearchParams({ language, query, zone });
-    const payload = await requestVisitorApi(`/api/visitor/profiles?${params.toString()}`);
+    const payload = await requestVisitorApi(`/api/visitor/profiles?${params.toString()}`, { requireSession: false });
     return {
       ok: true,
       profiles: payload.trees || [],
@@ -111,7 +147,7 @@ export async function recordVisitorScanBackend({ tree, language, source = "qr" }
 
 export async function fetchVisitorTreeCard({ tree, language, growthYears = 10 }) {
   try {
-    return await requestVisitorApi(`/api/visitor/trees/${tree.id}?language=${encodeURIComponent(language)}&growthYears=${growthYears}`);
+    return await requestVisitorApi(`/api/visitor/trees/${tree.id}?language=${encodeURIComponent(language)}&growthYears=${growthYears}`, { requireSession: false });
   } catch {
     return {
       ok: true,
