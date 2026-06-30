@@ -168,7 +168,16 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
           message: "Create a visitor session before using personalized visitor APIs.",
         };
       }
-      return { ok: true, session: { sessionId: normalizedSessionId } };
+      const session = await store.getSession(normalizedSessionId);
+      if (!session) {
+        return {
+          ok: false,
+          status: 401,
+          error: "INVALID_VISITOR_SESSION",
+          message: "Visitor session is missing or expired.",
+        };
+      }
+      return { ok: true, session };
     },
 
     listVisitorTreeProfiles({ language = "en", query = "", zone = "all" } = {}) {
