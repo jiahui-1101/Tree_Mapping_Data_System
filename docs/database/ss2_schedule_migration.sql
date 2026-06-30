@@ -67,3 +67,7 @@ CREATE TABLE IF NOT EXISTS ss2_push_notifications (
   INDEX idx_ss2_notifications_ranger (ranger_id, read_at),
   INDEX idx_ss2_notifications_task (task_id)
 );
+
+ALTER TABLE ss2_field_tasks
+  ADD COLUMN started_at TIMESTAMP NULL AFTER dispatched_at;
+

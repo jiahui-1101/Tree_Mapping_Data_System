@@ -27,6 +27,7 @@ export default function SchedulePage({ user, tasks = [], rangers = [], fieldSche
   const [urgentPriority, setUrgentPriority] = useState("urgent");
   const activeRangers = rangers.filter((ranger) => ranger.status === "active");
   const scheduleRows = useMemo(() => groupSchedule(fieldSchedule), [fieldSchedule]);
+  const schedulePublished = fieldSchedule?.status === "Published";
 
   const refreshSchedule = (result) => {
     if (!result) {
@@ -100,7 +101,7 @@ export default function SchedulePage({ user, tasks = [], rangers = [], fieldSche
                 <button
                   key={assignment.id}
                   className={`schedule-cell zone-${assignment.zone.replaceAll(" ", "-").toLowerCase()}`}
-                  draggable={fieldSchedule.status !== "Published"}
+                  draggable={!schedulePublished}
                   onDragStart={() => setDragged(assignment)}
                   onDragOver={(event) => event.preventDefault()}
                   onDrop={() => swapAssignments(assignment)}
@@ -127,7 +128,15 @@ export default function SchedulePage({ user, tasks = [], rangers = [], fieldSche
             </div>
           </div>
         )}
-        <button className="button schedule-approve" disabled={!fieldSchedule || fieldSchedule.status === "Published"} onClick={publishSchedule}>Approve & Dispatch Schedule</button>
+        {schedulePublished && (
+          <div className="dispatch-confirmation">
+            <strong>Schedule dispatched</strong>
+            <span>Patrol tasks have been sent to Ranger task bars. Any new urgent issue should be dispatched as a special task.</span>
+          </div>
+        )}
+        <button className="button schedule-approve" disabled={!fieldSchedule || schedulePublished} onClick={publishSchedule}>
+          {schedulePublished ? "Dispatched to Rangers" : "Approve & Dispatch Schedule"}
+        </button>
       </Card>
       {urgentOpen && <Modal title="Create Urgent Field Task" onClose={() => setUrgentOpen(false)}>
         <label className="field-label">Ranger</label><select value={urgentRanger} onChange={(event) => setUrgentRanger(event.target.value)}>{activeRangers.map((ranger) => <option key={ranger.id}>{ranger.name}</option>)}</select>

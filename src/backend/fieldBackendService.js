@@ -89,6 +89,7 @@ function rowToTask(row) {
     status: row.status,
     notes: row.notes || "",
     dispatchedAt: row.dispatched_at,
+    startedAt: row.started_at,
     completedAt: row.completed_at,
   };
 }
@@ -245,6 +246,7 @@ function createTaskDraft(draft = {}, tasks = []) {
       status: draft.status || "pending",
       notes: draft.notes || `${title}${draft.zone ? ` Zone: ${draft.zone}.` : ""}`,
       dispatchedAt: draft.dispatchedAt || null,
+      startedAt: draft.startedAt || null,
       completedAt: draft.completedAt || null,
     },
   });
@@ -366,7 +368,13 @@ function createMemoryFieldBackend() {
       if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, or escalated.");
       const task = await this.findTask(id);
       if (!task) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
-      tasks = tasks.map((item) => taskMatches(item, id) ? { ...item, status } : item);
+      const now = new Date().toISOString();
+      tasks = tasks.map((item) => taskMatches(item, id) ? {
+        ...item,
+        status,
+        startedAt: status === "in-progress" && !item.startedAt ? now : item.startedAt,
+        completedAt: status === "completed" ? now : item.completedAt,
+      } : item);
       return ok({ task: await this.findTask(id), tasks });
     },
     async listReports(filters = {}) {
@@ -414,8 +422,8 @@ function createMysqlFieldBackend(config) {
   );
   const insertTask = (connection, task) => connection.execute(
     `INSERT INTO ss2_field_tasks
-      (id, schedule_assignment_id, title, tree_id, ranger, task_type, source, priority, status, notes, dispatched_at, completed_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      (id, schedule_assignment_id, title, tree_id, ranger, task_type, source, priority, status, notes, dispatched_at, started_at, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       task.id,
       task.scheduleAssignmentId || null,
@@ -428,6 +436,7 @@ function createMysqlFieldBackend(config) {
       task.status,
       task.notes || "",
       task.dispatchedAt || null,
+      task.startedAt || null,
       task.completedAt || null,
     ]
   );
@@ -673,7 +682,14 @@ function createMysqlFieldBackend(config) {
     },
     async updateTaskStatus(id, status) {
       if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, or escalated.");
-      const [result] = await pool.execute("UPDATE ss2_field_tasks SET status = ? WHERE id = ?", [status, id]);
+      const [result] = await pool.execute(
+        `UPDATE ss2_field_tasks
+         SET status = ?,
+             started_at = CASE WHEN ? = 'in-progress' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
+             completed_at = CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE completed_at END
+         WHERE id = ?`,
+        [status, status, status, id]
+      );
       if (!result.affectedRows) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
       return ok({ task: await this.findTask(id), tasks: await this.listTasks() });
     },

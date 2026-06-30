@@ -1,27 +1,79 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { filterRangerTasks } from "../../services/rangerService.js";
+
+function isScheduleTask(task) {
+  return task.source === "Schedule" || task.taskType === "Patrol" || Boolean(task.scheduleAssignmentId);
+}
+
+function taskZone(task) {
+  const zoneMatch = String(task.notes || "").match(/(?:Patrol|Zone:)\s*([A-Za-z ]+)/i);
+  return isScheduleTask(task) ? task.treeId : zoneMatch?.[1]?.trim() || task.treeId;
+}
+
+function compactNotes(notes = "") {
+  return String(notes).split(". ").slice(0, 2).join(". ").slice(0, 140);
+}
+
+function elapsedLabel(startedAt, nowMs) {
+  if (!startedAt) return "Not started";
+  const elapsedMs = Math.max(0, nowMs - new Date(startedAt).getTime());
+  const minutes = Math.floor(elapsedMs / 60000);
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return hours ? `${hours}h ${rest}m` : `${Math.max(1, rest)}m`;
+}
 
 export default function RangerTasksPage({ user, tasks, onUpdateTask, onOpenScanner, showToast }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [priority, setPriority] = useState("all");
   const [source, setSource] = useState("all");
+  const [activeTab, setActiveTab] = useState("schedule");
+  const [nowMs, setNowMs] = useState(Date.now());
   const rangerName = user?.name || "";
   const rangerTasks = useMemo(() => filterRangerTasks(tasks, rangerName), [rangerName, tasks]);
-  const filteredTasks = useMemo(() => filterRangerTasks(tasks, rangerName, { query, status, priority, source }), [priority, query, rangerName, source, status, tasks]);
+  const filteredTasks = useMemo(() => {
+    const visible = filterRangerTasks(tasks, rangerName, { query, status, priority, source });
+    return visible.filter((task) => activeTab === "schedule" ? isScheduleTask(task) : !isScheduleTask(task));
+  }, [activeTab, priority, query, rangerName, source, status, tasks]);
   const completed = rangerTasks.filter((task) => task.status === "completed").length;
   const active = rangerTasks.filter((task) => task.status === "pending" || task.status === "in-progress").length;
   const urgentHigh = rangerTasks.filter((task) => task.priority === "urgent" || task.priority === "high").length;
+  const scheduleCount = rangerTasks.filter(isScheduleTask).length;
+  const specialCount = rangerTasks.length - scheduleCount;
+  const activePatrol = rangerTasks.find((task) => task.status === "in-progress");
   const sources = [...new Set(rangerTasks.map((task) => task.source))];
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const advanceTask = (task) => {
+    if (task.status === "pending") {
+      onUpdateTask(task.id, "in-progress");
+      showToast(`${task.id} accepted. Patrol timer and field tracking started.`);
+      return;
+    }
+    if (task.status === "in-progress") {
+      onUpdateTask(task.id, "completed");
+      showToast(`${task.id} completed. Office dashboard synced with patrol duration.`);
+    }
+  };
+
   return (
     <>
       <button className="scan-hero" onClick={onOpenScanner}>
         <span>▣</span><div><h2>Scan Tree QR Code</h2><p>Choose manual assessment or AI photo diagnosis after scanning.</p></div><b>Open Scanner →</b>
       </button>
-      <div className="ranger-summary"><span className="avatar">{user?.initials || "R"}</span><div><h3>{rangerName}</h3><p>{user?.id || "Ranger"} · Zon Arboretum today</p></div><strong>{rangerTasks.length}<small>Assigned</small></strong><strong>{active}<small>Active</small></strong><strong>{completed}<small>Completed</small></strong><strong>{urgentHigh}<small>Urgent/High</small></strong></div>
-      <Card title="Today's Task Bar" subtitle="Urgent tasks stay pinned to the top">
+      <div className="ranger-summary"><span className="avatar">{user?.initials || "R"}</span><div><h3>{rangerName}</h3><p>{user?.id || "Ranger"} · {activePatrol ? `Tracking ${activePatrol.id} for ${elapsedLabel(activePatrol.startedAt, nowMs)}` : "Ready for dispatch"}</p></div><strong>{rangerTasks.length}<small>Assigned</small></strong><strong>{active}<small>Active</small></strong><strong>{completed}<small>Completed</small></strong><strong>{urgentHigh}<small>Urgent/High</small></strong></div>
+      <Card title="Today's Task Bar" subtitle="Scheduled patrols and special admin dispatches are separated for field use">
+        <div className="segmented task-tabs">
+          <button className={activeTab === "schedule" ? "active" : ""} onClick={() => setActiveTab("schedule")}>Normal Schedule <b>{scheduleCount}</b></button>
+          <button className={activeTab === "special" ? "active" : ""} onClick={() => setActiveTab("special")}>Special Tasks <b>{specialCount}</b></button>
+        </div>
         <div className="page-toolbar">
           <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search task ID, title, tree ID, source or notes..." />
           <div className="toolbar-actions">
@@ -37,12 +89,24 @@ export default function RangerTasksPage({ user, tasks, onUpdateTask, onOpenScann
           </div>
         </div>
         <div className="ranger-task-stack">
-          {filteredTasks.length === 0 && <div className="it-empty-state"><h3>No tasks match these filters</h3><p>Adjust search, status, priority, or source to review another field task set.</p></div>}
+          {filteredTasks.length === 0 && <div className="it-empty-state"><h3>No tasks in this tab</h3><p>Adjust filters or wait for the next backend dispatch from Admin.</p></div>}
           {filteredTasks.map((task) => <article key={task.id} className={`mobile-task priority-${task.priority}`}>
-            <div className="split-heading"><small>{task.priority === "urgent" ? "EMERGENCY" : task.source}</small><StatusPill status={task.status} /></div>
-            <h3>{task.title}</h3><p>{task.treeId}</p><small>{task.notes}</small>
+            <div className="split-heading"><small>{task.priority === "urgent" ? "EMERGENCY DISPATCH" : isScheduleTask(task) ? "NORMAL PATROL" : task.source}</small><StatusPill status={task.status} /></div>
+            <h3>{task.title}</h3>
+            <div className="task-chip-row">
+              <span><b>{isScheduleTask(task) ? "Zone" : "Tree/Area"}</b>{taskZone(task)}</span>
+              <span><b>Priority</b>{task.priority}</span>
+              <span><b>Duration</b>{task.status === "completed" ? "Completed" : elapsedLabel(task.startedAt, nowMs)}</span>
+            </div>
+            <p>{compactNotes(task.notes)}</p>
+            {task.status === "in-progress" && (
+              <div className="tracking-panel">
+                <strong>Field tracking active</strong>
+                <span>Started at {new Date(task.startedAt || Date.now()).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}. GPS route and patrol duration are being recorded for admin review.</span>
+              </div>
+            )}
             <div className="button-row">
-              <button className="button button-small" disabled={task.status === "completed"} onClick={() => { onUpdateTask(task.id, task.status === "pending" ? "in-progress" : "completed"); showToast("Task status synced to the office dashboard."); }}>{task.status === "pending" ? "Start Task" : task.status === "completed" ? "Completed" : "Mark Completed"}</button>
+              <button className="button button-small" disabled={task.status === "completed"} onClick={() => advanceTask(task)}>{task.status === "pending" ? "Accept & Start Tracking" : task.status === "completed" ? "Completed" : "Complete Patrol"}</button>
               <button className="button button-small button-outline" onClick={onOpenScanner}>Scan QR</button>
             </div>
           </article>)}
@@ -51,4 +115,3 @@ export default function RangerTasksPage({ user, tasks, onUpdateTask, onOpenScann
     </>
   );
 }
-
