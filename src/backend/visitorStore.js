@@ -2,6 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 
 const DEFAULT_STATE = Object.freeze({
+  sessions: {},
   collections: {},
   scans: [],
   chatLogs: [],
