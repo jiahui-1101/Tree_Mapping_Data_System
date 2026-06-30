@@ -368,6 +368,9 @@ function createMemoryFieldBackend() {
       if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, or escalated.");
       const task = await this.findTask(id);
       if (!task) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
+      if (status === "completed" && !reports.some((report) => report.taskId === task.id)) {
+        return fail(400, "EVIDENCE_REQUIRED", "Submit a linked field report before completing this task.");
+      }
       const now = new Date().toISOString();
       tasks = tasks.map((item) => taskMatches(item, id) ? {
         ...item,
@@ -682,6 +685,10 @@ function createMysqlFieldBackend(config) {
     },
     async updateTaskStatus(id, status) {
       if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, or escalated.");
+      if (status === "completed") {
+        const [reportRows] = await pool.execute("SELECT id FROM ss2_field_reports WHERE task_id = ? LIMIT 1", [id]);
+        if (!reportRows[0]) return fail(400, "EVIDENCE_REQUIRED", "Submit a linked field report before completing this task.");
+      }
       const [result] = await pool.execute(
         `UPDATE ss2_field_tasks
          SET status = ?,
