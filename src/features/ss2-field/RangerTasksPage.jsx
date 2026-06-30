@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
+import { fetchFieldNotifications } from "../../services/fieldApiService.js";
 import { filterRangerTasks } from "../../services/rangerService.js";
 
 function isScheduleTask(task) {
@@ -39,6 +40,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const [manualCause, setManualCause] = useState("");
   const [manualTreatment, setManualTreatment] = useState("");
   const [evidenceNotes, setEvidenceNotes] = useState("");
+  const [notifications, setNotifications] = useState([]);
   const rangerName = user?.name || "";
   const rangerTasks = useMemo(() => filterRangerTasks(tasks, rangerName), [rangerName, tasks]);
   const baseFilteredTasks = useMemo(() => filterRangerTasks(tasks, rangerName, { query, status, priority, source }), [priority, query, rangerName, source, status, tasks]);
@@ -62,6 +64,19 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
     const intervalId = window.setInterval(() => setNowMs(Date.now()), 30000);
     return () => window.clearInterval(intervalId);
   }, []);
+  useEffect(() => {
+    if (!rangerName) return undefined;
+    let active = true;
+    const load = () => fetchFieldNotifications({ ranger: rangerName }).then((result) => {
+      if (active && result?.data) setNotifications(result.data);
+    });
+    void load();
+    const intervalId = window.setInterval(load, 10000);
+    return () => {
+      active = false;
+      window.clearInterval(intervalId);
+    };
+  }, [rangerName]);
 
   const advanceTask = (task) => {
     if (task.status === "pending") {
@@ -79,13 +94,13 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
     }
   };
 
-  const submitEvidence = () => {
+  const submitEvidence = async () => {
     if (!completionTask) return;
     if (!evidenceTreeId || !manualCause.trim() || !manualTreatment.trim()) {
       showToast("Complete the evidence fields before closing this task.");
       return;
     }
-    const report = onSubmitTaskEvidence?.(completionTask, {
+    const report = await onSubmitTaskEvidence?.(completionTask, {
       taskId: completionTask.id,
       treeId: evidenceTreeId,
       reportMode: "manual",
@@ -104,6 +119,18 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
         <span>▣</span><div><h2>Scan Tree QR Code</h2><p>Choose manual assessment or AI photo diagnosis after scanning.</p></div><b>Open Scanner →</b>
       </button>
       <div className="ranger-summary"><span className="avatar">{user?.initials || "R"}</span><div><h3>{rangerName}</h3><p>{user?.id || "Ranger"} · {activePatrol ? `Tracking ${activePatrol.id} for ${elapsedLabel(activePatrol.startedAt, nowMs)}` : "Ready for dispatch"}</p></div><strong>{rangerTasks.length}<small>Assigned</small></strong><strong>{active}<small>Active</small></strong><strong>{completed}<small>Completed</small></strong><strong>{urgentHigh}<small>Urgent/High</small></strong></div>
+      {notifications.length > 0 && (
+        <Card title="Backend Notifications" subtitle="Latest task dispatches from SS2 push notification ledger">
+          <div className="notification-feed">
+            {notifications.slice(0, 4).map((item) => (
+              <article key={item.id}>
+                <span><b>{item.deliveryStatus}</b><small>{item.sentAt ? new Date(item.sentAt).toLocaleString() : "Just now"}</small></span>
+                <p>{item.payloadSummary}</p>
+              </article>
+            ))}
+          </div>
+        </Card>
+      )}
       <Card title="Today's Task Bar" subtitle="Scheduled patrols and special admin dispatches are separated for field use">
         <div className="segmented task-tabs">
           <button className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>View All <b>{viewAllCount}</b></button>

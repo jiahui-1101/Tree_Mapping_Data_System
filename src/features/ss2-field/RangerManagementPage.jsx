@@ -2,12 +2,17 @@ import { useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
+import { upsertRangerBackend } from "../../services/fieldApiService.js";
 
-export default function RangerManagementPage({ rangers = [], showToast }) {
+const EMPTY_FORM = { id: "", name: "", phone: "", zone: "Arboretum", status: "active" };
+
+export default function RangerManagementPage({ rangers = [], showToast, onSyncFieldState }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
   const [zone, setZone] = useState("all");
+  const [form, setForm] = useState(EMPTY_FORM);
+  const [submitting, setSubmitting] = useState(false);
   const zones = useMemo(() => [...new Set(rangers.map((ranger) => ranger.zone).filter(Boolean))], [rangers]);
   const filteredRangers = useMemo(() => {
     const needle = query.trim().toLowerCase();
@@ -19,8 +24,47 @@ export default function RangerManagementPage({ rangers = [], showToast }) {
     });
   }, [query, rangers, status, zone]);
   const activeCount = rangers.filter((ranger) => ranger.status === "active").length;
-  const toggle = (id) => {
-    showToast(`Ranger ${id} status updates should be submitted through the backend account API.`);
+
+  const syncRanger = (ranger) => {
+    const next = [ranger, ...rangers.filter((item) => item.id !== ranger.id)].sort((a, b) => a.id.localeCompare(b.id));
+    onSyncFieldState?.({ rangers: next });
+  };
+
+  const updateForm = (field, value) => setForm((current) => ({ ...current, [field]: value }));
+
+  const createRanger = async () => {
+    if (!form.name.trim()) {
+      showToast("Ranger name is required before creating the backend record.");
+      return;
+    }
+    setSubmitting(true);
+    const result = await upsertRangerBackend({
+      id: form.id.trim() || undefined,
+      name: form.name.trim(),
+      phone: form.phone.trim(),
+      zone: form.zone.trim() || "Arboretum",
+      status: form.status,
+    });
+    setSubmitting(false);
+    if (!result?.ranger) {
+      showToast("Ranger backend update failed. Check Laragon/MySQL and the backend terminal.");
+      return;
+    }
+    syncRanger(result.ranger);
+    setForm(EMPTY_FORM);
+    setOpen(false);
+    showToast(`${result.ranger.name} saved through SS2 backend ranger API.`);
+  };
+
+  const toggle = async (ranger) => {
+    const nextStatus = ranger.status === "active" ? "inactive" : "active";
+    const result = await upsertRangerBackend({ ...ranger, status: nextStatus });
+    if (!result?.ranger) {
+      showToast(`Unable to update ${ranger.id}. Check SS2 backend connection.`);
+      return;
+    }
+    syncRanger(result.ranger);
+    showToast(`${result.ranger.name} is now ${nextStatus}.`);
   };
 
   return (
@@ -47,15 +91,21 @@ export default function RangerManagementPage({ rangers = [], showToast }) {
           </div>
         </div>
         <div className="table-wrap"><table><thead><tr><th>ID</th><th>Name</th><th>Assigned zone</th><th>Phone</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody>{filteredRangers.map((ranger) => <tr key={ranger.id}><td>{ranger.id}</td><td>{ranger.name}</td><td>{ranger.zone}</td><td>{ranger.phone}</td><td><StatusPill status={ranger.status} /></td><td><button className="table-action" onClick={() => toggle(ranger.id)}>{ranger.status === "active" ? "Deactivate" : "Activate"}</button></td></tr>)}</tbody>
+          <tbody>{filteredRangers.map((ranger) => <tr key={ranger.id}><td>{ranger.id}</td><td>{ranger.name}</td><td>{ranger.zone}</td><td>{ranger.phone}</td><td><StatusPill status={ranger.status} /></td><td><button className="table-action" onClick={() => toggle(ranger)}>{ranger.status === "active" ? "Deactivate" : "Activate"}</button></td></tr>)}</tbody>
         </table></div>
         {filteredRangers.length === 0 && <div className="it-empty-state"><h3>No rangers match these filters</h3><p>Try another keyword, zone, or status filter.</p></div>}
       </Card>
       {open && <Modal title="Add / Assign Ranger" onClose={() => setOpen(false)}>
-        <label className="field-label">Full name</label><input placeholder="e.g. Encik Ali bin Hamid" />
-        <label className="field-label">Staff ID</label><input placeholder="e.g. R005" />
-        <label className="field-label">Phone</label><input placeholder="+60 12-345 6789" />
-        <button className="button button-block" onClick={() => { setOpen(false); showToast("Ranger account creation represented in UI mock."); }}>Create Account</button>
+        <label className="field-label">Full name</label><input value={form.name} onChange={(event) => updateForm("name", event.target.value)} placeholder="e.g. Encik Ali bin Hamid" />
+        <label className="field-label">Staff ID</label><input value={form.id} onChange={(event) => updateForm("id", event.target.value)} placeholder="e.g. R005 (leave blank for backend auto ID)" />
+        <label className="field-label">Assigned zone</label><input value={form.zone} onChange={(event) => updateForm("zone", event.target.value)} placeholder="e.g. Arboretum" />
+        <label className="field-label">Phone</label><input value={form.phone} onChange={(event) => updateForm("phone", event.target.value)} placeholder="+60 12-345 6789" />
+        <label className="field-label">Status</label>
+        <select value={form.status} onChange={(event) => updateForm("status", event.target.value)}>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+        <button className="button button-block" disabled={submitting} onClick={createRanger}>{submitting ? "Saving..." : "Create Account"}</button>
       </Modal>}
     </>
   );

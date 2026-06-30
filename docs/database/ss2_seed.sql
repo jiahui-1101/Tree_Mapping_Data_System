@@ -26,7 +26,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO ss2_field_reports
   (id, task_id, tree_id, tree_name, ranger, report_mode, photo_name, photo_sync_status, photo_analysis_status,
    observed_status, manual_cause, manual_treatment, ai_possibilities, selected_ai_possibility_id,
-   diagnosis, confidence, treatment, notes, gps_label, timestamp_label, sync_status, analysis)
+   ai_diagnosis_ref, diagnosis, confidence, treatment, notes, gps_label, timestamp_label, sync_status, analysis)
 VALUES
   (
     'FR-1021',
@@ -102,6 +102,7 @@ VALUES
       )
     ),
     'ai-1',
+    'AID-TBJ-004-SEED',
     'Leaf spot disease',
     89,
     'Remove infected leaves and apply a copper-based spray.',
@@ -135,6 +136,7 @@ ON DUPLICATE KEY UPDATE
   manual_treatment = VALUES(manual_treatment),
   ai_possibilities = VALUES(ai_possibilities),
   selected_ai_possibility_id = VALUES(selected_ai_possibility_id),
+  ai_diagnosis_ref = VALUES(ai_diagnosis_ref),
   diagnosis = VALUES(diagnosis),
   confidence = VALUES(confidence),
   treatment = VALUES(treatment),

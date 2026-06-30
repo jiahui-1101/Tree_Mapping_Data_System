@@ -2,13 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { getPublicTreeCard } from "../../data/visitorTreeProfiles.js";
 import { ROLE } from "../../models.js";
 import { findTree, maskTreeForRole } from "../../services/mockTreeService.js";
-import { analyzeFieldPhoto } from "../../services/rangerService.js";
 import { visitorText } from "../../services/visitorI18n.js";
 import Modal from "../common/Modal.jsx";
 import StatusPill from "../common/StatusPill.jsx";
 import TreePhoto from "../common/TreePhoto.jsx";
 
-export default function QRScanner({ role, trees, qrCodes = [], language, onClose, onComplete, onScanEvent }) {
+export default function QRScanner({ role, trees, qrCodes = [], language, onClose, onComplete, onAnalyzePhoto, onScanEvent }) {
   const [treeId, setTreeId] = useState("TBJ-004");
   const [tree, setTree] = useState(null);
   const [error, setError] = useState("");
@@ -120,7 +119,7 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
     return () => window.clearInterval(interval);
   }, [cameraState, scan]);
 
-  const finish = () => {
+  const finish = async () => {
     if (isVisitor) {
       onComplete(tree, t("qr.found"));
       onClose();
@@ -138,7 +137,7 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
       setError("Add the issue cause and treatment action for a manual ranger assessment.");
       return;
     }
-    const report = onComplete(tree, "Field report submitted successfully.", {
+    const report = await onComplete(tree, "Field report submitted successfully.", {
       reportMode,
       photoName: reportMode === "ai" ? photo : "",
       observedStatus,
@@ -146,6 +145,7 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
       manualTreatment,
       aiPossibilities: reportMode === "ai" ? aiPossibilities : [],
       selectedAiPossibilityId: reportMode === "ai" ? selectedAiPossibility.id : "",
+      aiDiagnosisRef: aiResult?.aiDiagnosisRef || "",
       diagnosis: selectedAiPossibility?.name || "",
       confidence: selectedAiPossibility?.confidence ?? null,
       treatment: selectedAiPossibility?.treatment || selectedAiPossibility?.solutions?.[0] || "",
@@ -157,19 +157,23 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
     if (report) setSubmittedReport(report);
   };
 
-  const runPhotoAnalysis = () => {
+  const runPhotoAnalysis = async () => {
     if (!photo) {
       setError("Attach a field photo before running AI diagnosis.");
       return;
     }
     setError("");
     setAiState("analyzing");
-    window.setTimeout(() => {
-      const result = analyzeFieldPhoto({ tree, photoName: photo });
-      setAiResult(result);
-      setSelectedAiPossibilityId(result.selectedAiPossibilityId || result.possibilities?.[0]?.id || "");
-      setAiState("complete");
-    }, 450);
+    const payload = await onAnalyzePhoto?.({ treeId: tree?.id, photoName: photo });
+    const result = payload?.analysis;
+    if (!result) {
+      setAiState("idle");
+      setError("AI photo diagnosis backend is unavailable. Check the SS2 backend terminal.");
+      return;
+    }
+    setAiResult(result);
+    setSelectedAiPossibilityId(result.selectedAiPossibilityId || result.possibilities?.[0]?.id || "");
+    setAiState("complete");
   };
 
   return (
@@ -331,4 +335,3 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
     </Modal>
   );
 }
-
