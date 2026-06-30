@@ -26,9 +26,7 @@ import MapPage from "./features/ss4-map/MapPage.jsx";
 import SpatialPage from "./features/ss4-map/SpatialPage.jsx";
 import { DEFAULT_PAGE } from "./config/navigation.js";
 import { AUDIT_LOGS } from "./data/auditLogs.js";
-import { INITIAL_FIELD_REPORTS } from "./data/fieldReports.js";
 import { QRCODES, QR_SCAN_EVENTS, SPATIAL_PLANNING_RECORDS, VISITOR_HEATMAP_AGGREGATES } from "./data/ss4Operations.js";
-import { INITIAL_TASKS } from "./data/tasks.js";
 import { TREES } from "./data/trees.js";
 import { ROLE } from "./models.js";
 import { canAccessPage } from "./services/mockAuthService.js";
@@ -71,8 +69,10 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [activePage, setActivePage] = useState("dashboard");
   const [trees, setTrees] = useState(TREES);
-  const [tasks, setTasks] = useState(INITIAL_TASKS);
-  const [fieldReports, setFieldReports] = useState(INITIAL_FIELD_REPORTS);
+  const [tasks, setTasks] = useState([]);
+  const [fieldReports, setFieldReports] = useState([]);
+  const [rangers, setRangers] = useState([]);
+  const [fieldSchedule, setFieldSchedule] = useState(null);
   const [qrCodes, setQrCodes] = useState(QRCODES);
   const [qrScanEvents, setQrScanEvents] = useState(QR_SCAN_EVENTS);
   const [spatialPlanningRecords, setSpatialPlanningRecords] = useState(SPATIAL_PLANNING_RECORDS);
@@ -92,6 +92,8 @@ export default function App() {
       if (!active || !state) return;
       setTasks(state.tasks);
       setFieldReports(state.reports);
+      setRangers(state.rangers);
+      setFieldSchedule(state.schedule);
     });
     return () => {
       active = false;
@@ -178,6 +180,12 @@ export default function App() {
       if (result?.tasks) setTasks(result.tasks);
     });
   };
+  const syncFieldState = (payload = {}) => {
+    if (payload.tasks) setTasks(payload.tasks);
+    if (payload.reports) setFieldReports(payload.reports);
+    if (payload.rangers) setRangers(payload.rangers);
+    if (payload.schedule !== undefined) setFieldSchedule(payload.schedule);
+  };
   const addTask = (taskDraft) => {
     const task = { ...taskDraft, id: taskDraft.id || nextTaskId(tasks), status: taskDraft.status || "pending" };
     setTasks((current) => [...current, task]);
@@ -254,7 +262,7 @@ export default function App() {
     setLanguage(next);
   };
 
-  const pageProps = { role: user.role, user, trees, tasks, fieldReports, qrCodes, qrScanEvents, spatialPlanningRecords, visitorHeatmapAggregates, auditLogs, language, showToast };
+  const pageProps = { role: user.role, user, trees, tasks, fieldReports, rangers, fieldSchedule, qrCodes, qrScanEvents, spatialPlanningRecords, visitorHeatmapAggregates, auditLogs, language, showToast, onSyncFieldState: syncFieldState };
   let content;
   switch (activePage) {
     case "dashboard": content = <DashboardPage {...pageProps} onNavigate={navigate} />; break;

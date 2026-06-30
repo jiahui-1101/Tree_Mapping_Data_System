@@ -26,9 +26,52 @@ export async function fetchFieldBackendState() {
       tasks: tasks.data || [],
       reports: reports.data || [],
       rangers: rangers.data || [],
+      schedule: dashboard.schedule || null,
       dashboard,
       source: "backend",
     };
+  } catch {
+    return null;
+  }
+}
+
+export async function generateScheduleBackend({ createdBy, weekLabel } = {}) {
+  try {
+    return await requestFieldApi("/api/ss2/schedules/generate", {
+      method: "POST",
+      body: { createdBy, weekLabel },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function updateScheduleAssignmentBackend({ assignmentId, rangerId, rangerName, zone, editedBy, editReason }) {
+  try {
+    return await requestFieldApi(`/api/ss2/schedule-assignments/${encodeURIComponent(assignmentId)}`, {
+      method: "PATCH",
+      body: { rangerId, rangerName, zone, editedBy, editReason },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function publishScheduleBackend({ scheduleId, approvedBy }) {
+  try {
+    return await requestFieldApi(`/api/ss2/schedules/${encodeURIComponent(scheduleId)}/publish`, {
+      method: "POST",
+      body: { approvedBy },
+    });
+  } catch {
+    return null;
+  }
+}
+
+export async function fetchFieldNotifications({ ranger = "" } = {}) {
+  try {
+    const params = ranger ? `?ranger=${encodeURIComponent(ranger)}` : "";
+    return await requestFieldApi(`/api/ss2/notifications${params}`);
   } catch {
     return null;
   }
