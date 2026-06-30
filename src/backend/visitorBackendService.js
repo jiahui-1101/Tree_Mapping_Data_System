@@ -359,6 +359,8 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
 const defaultBackend = createVisitorBackend();
 
 export const resetVisitorBackendState = (...args) => defaultBackend.resetVisitorBackendState(...args);
+export const createGuestVisitorSession = (...args) => defaultBackend.createGuestVisitorSession(...args);
+export const validateVisitorSession = (...args) => defaultBackend.validateVisitorSession(...args);
 export const listVisitorTreeProfiles = (...args) => defaultBackend.listVisitorTreeProfiles(...args);
 export const getVisitorTreeIdCard = (...args) => defaultBackend.getVisitorTreeIdCard(...args);
 export const recommendVisitorRoute = (...args) => defaultBackend.recommendVisitorRoute(...args);
