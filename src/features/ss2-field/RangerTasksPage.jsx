@@ -43,18 +43,18 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const rangerTasks = useMemo(() => filterRangerTasks(tasks, rangerName), [rangerName, tasks]);
   const baseFilteredTasks = useMemo(() => filterRangerTasks(tasks, rangerName, { query, status, priority, source }), [priority, query, rangerName, source, status, tasks]);
   const visibleTasks = useMemo(() => baseFilteredTasks.filter((task) => {
-    if (activeTab === "history") return task.status === "completed";
-    if (task.status === "completed") return false;
     if (activeTab === "schedule") return isScheduleTask(task);
     if (activeTab === "special") return !isScheduleTask(task);
+    if (activeTab === "history") return task.status === "completed";
     return true;
   }), [activeTab, baseFilteredTasks]);
   const completed = rangerTasks.filter((task) => task.status === "completed").length;
   const active = rangerTasks.filter((task) => task.status === "pending" || task.status === "in-progress").length;
   const urgentHigh = rangerTasks.filter((task) => task.priority === "urgent" || task.priority === "high").length;
-  const activeTasks = rangerTasks.filter((task) => task.status !== "completed");
-  const scheduleCount = activeTasks.filter(isScheduleTask).length;
-  const specialCount = activeTasks.filter((task) => !isScheduleTask(task)).length;
+  const viewAllCount = baseFilteredTasks.length;
+  const scheduleCount = baseFilteredTasks.filter(isScheduleTask).length;
+  const specialCount = baseFilteredTasks.filter((task) => !isScheduleTask(task)).length;
+  const historyCount = baseFilteredTasks.filter((task) => task.status === "completed").length;
   const activePatrol = rangerTasks.find((task) => task.status === "in-progress");
   const sources = [...new Set(rangerTasks.map((task) => task.source))];
 
@@ -106,10 +106,10 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
       <div className="ranger-summary"><span className="avatar">{user?.initials || "R"}</span><div><h3>{rangerName}</h3><p>{user?.id || "Ranger"} · {activePatrol ? `Tracking ${activePatrol.id} for ${elapsedLabel(activePatrol.startedAt, nowMs)}` : "Ready for dispatch"}</p></div><strong>{rangerTasks.length}<small>Assigned</small></strong><strong>{active}<small>Active</small></strong><strong>{completed}<small>Completed</small></strong><strong>{urgentHigh}<small>Urgent/High</small></strong></div>
       <Card title="Today's Task Bar" subtitle="Scheduled patrols and special admin dispatches are separated for field use">
         <div className="segmented task-tabs">
-          <button className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>View All <b>{active}</b></button>
+          <button className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>View All <b>{viewAllCount}</b></button>
           <button className={activeTab === "schedule" ? "active" : ""} onClick={() => setActiveTab("schedule")}>Normal Schedule <b>{scheduleCount}</b></button>
           <button className={activeTab === "special" ? "active" : ""} onClick={() => setActiveTab("special")}>Special Tasks <b>{specialCount}</b></button>
-          <button className={activeTab === "history" ? "active" : ""} onClick={() => setActiveTab("history")}>History <b>{completed}</b></button>
+          <button className={activeTab === "history" ? "active" : ""} onClick={() => { setActiveTab("history"); setStatus("completed"); }}>History <b>{historyCount}</b></button>
         </div>
         <div className="page-toolbar">
           <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search task ID, title, tree ID, source or notes..." />
@@ -146,7 +146,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
               <button className="button button-small button-outline" onClick={onOpenScanner}>Scan QR</button>
             </div>
           </article>)}
-          {visibleTasks.length === 0 && <div className="it-empty-state"><h3>No tasks in this tab</h3><p>Completed work moves into History after evidence is submitted.</p></div>}
+          {visibleTasks.length === 0 && <div className="it-empty-state"><h3>No tasks match this view</h3><p>Try another tab or adjust the status, priority, source, and search filters.</p></div>}
         </div>
       </Card>
       {completionTask && (
