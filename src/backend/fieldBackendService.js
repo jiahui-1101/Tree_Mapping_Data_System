@@ -154,6 +154,7 @@ function rowToReport(row) {
     manualTreatment: row.manual_treatment || "",
     aiPossibilities: parseJson(row.ai_possibilities, []),
     selectedAiPossibilityId: row.selected_ai_possibility_id || "",
+    aiDiagnosisRef: row.ai_diagnosis_ref || "",
     diagnosis: row.diagnosis || "",
     confidence: row.confidence,
     treatment: row.treatment || "",
@@ -447,8 +448,8 @@ function createMysqlFieldBackend(config) {
     `INSERT INTO ss2_field_reports
       (id, task_id, tree_id, tree_name, ranger, report_mode, photo_name, photo_sync_status, photo_analysis_status,
        observed_status, manual_cause, manual_treatment, ai_possibilities, selected_ai_possibility_id,
-       diagnosis, confidence, treatment, notes, gps_label, timestamp_label, sync_status, analysis)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ai_diagnosis_ref, diagnosis, confidence, treatment, notes, gps_label, timestamp_label, sync_status, analysis)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       report.id,
       report.taskId || null,
@@ -464,6 +465,7 @@ function createMysqlFieldBackend(config) {
       report.manualTreatment || null,
       JSON.stringify(report.aiPossibilities || []),
       report.selectedAiPossibilityId || null,
+      report.aiDiagnosisRef || null,
       report.diagnosis || null,
       report.confidence,
       report.treatment || null,

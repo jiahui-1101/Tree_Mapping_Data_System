@@ -77,6 +77,17 @@ export async function fetchFieldNotifications({ ranger = "" } = {}) {
   }
 }
 
+export async function upsertRangerBackend(rangerDraft) {
+  try {
+    return await requestFieldApi("/api/ss2/rangers", {
+      method: "POST",
+      body: rangerDraft,
+    });
+  } catch {
+    return null;
+  }
+}
+
 export async function createFieldTaskBackend(taskDraft) {
   try {
     return await requestFieldApi("/api/ss2/tasks", {

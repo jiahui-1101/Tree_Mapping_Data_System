@@ -31,12 +31,10 @@ import { TREES } from "./data/trees.js";
 import { ROLE } from "./models.js";
 import { canAccessPage } from "./services/mockAuthService.js";
 import { nextTaskId, updateTreeRecord } from "./services/adminService.js";
-import { createFieldReport } from "./services/rangerService.js";
-import { createFieldTaskBackend, fetchFieldBackendState, submitFieldReportBackend, updateFieldTaskStatusBackend } from "./services/fieldApiService.js";
+import { analyzeFieldPhotoBackend, createFieldTaskBackend, fetchFieldBackendState, submitFieldReportBackend, updateFieldTaskStatusBackend } from "./services/fieldApiService.js";
 import { addCollectedTreeWithStatus, loadCollection, loadLanguage, saveLanguage } from "./services/storageService.js";
 import { collectVisitorTreeBackend, recordVisitorScanBackend } from "./services/visitorApiService.js";
 import { visitorText } from "./services/visitorI18n.js";
-import { recordSs4QrScanBackend } from "./services/ss4ApiService.js";
 
 const ROLE_LABEL = {
   [ROLE.ADMIN]: "Admin",
@@ -180,7 +178,7 @@ export default function App() {
     void collectVisitorTreeBackend({ tree, language });
   };
 
-  const completeScan = (tree, message, reportDraft) => {
+  const completeScan = async (tree, message, reportDraft) => {
     if (user.role === ROLE.VISITOR) {
       collect(tree);
       void recordVisitorScanBackend({ tree, language, source: "qr" });
@@ -188,9 +186,14 @@ export default function App() {
       return null;
     }
     if (user.role === ROLE.RANGER && reportDraft) {
-      const report = createFieldReport({ draft: reportDraft, tree, rangerName: user.name, tasks, existingReports: fieldReports });
-      setFieldReports((current) => [report, ...current]);
-      if (report.taskId) setTasks((current) => current.map((task) => task.id === report.taskId ? { ...task, status: "completed" } : task));
+      const result = await submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft });
+      if (!result?.report) {
+        showToast("Backend report submission failed. Check the SS2 backend terminal.");
+        return null;
+      }
+      const report = result.report;
+      setFieldReports(result.reports || ((current) => [report, ...current]));
+      if (result.tasks) setTasks(result.tasks);
       setTrees((current) => current.map((item) => item.id === report.treeId ? {
         ...item,
         status: report.observedStatus,
@@ -202,11 +205,6 @@ export default function App() {
         severity: report.observedStatus === "critical" ? "high" : "medium",
       });
       showToast(`${report.id} submitted. Report synced to admin dashboard.`);
-      void submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft }).then((result) => {
-        if (!result?.report) return;
-        setFieldReports(result.reports || ((current) => [result.report, ...current.filter((item) => item.id !== report.id)]));
-        if (result.tasks) setTasks(result.tasks);
-      });
       return report;
     }
     showToast(message);
@@ -219,16 +217,21 @@ export default function App() {
       if (result?.tasks) setTasks(result.tasks);
     });
   };
-  const submitTaskEvidence = (task, draft) => {
+  const submitTaskEvidence = async (task, draft) => {
     const tree = trees.find((item) => item.id === draft.treeId);
     if (!tree) {
       showToast("Select a valid tree before completing this task.");
       return null;
     }
     const reportDraft = { ...draft, taskId: task.id, notes: draft.notes || `Evidence submitted for ${task.id}.` };
-    const report = createFieldReport({ draft: reportDraft, tree, rangerName: user.name, tasks, existingReports: fieldReports });
-    setFieldReports((current) => [report, ...current]);
-    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: "completed", completedAt: new Date().toISOString() } : item));
+    const result = await submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft });
+    if (!result?.report) {
+      showToast("Backend evidence submission failed. Check the SS2 backend terminal.");
+      return null;
+    }
+    const report = result.report;
+    setFieldReports(result.reports || ((current) => [report, ...current]));
+    if (result.tasks) setTasks(result.tasks);
     setTrees((current) => current.map((item) => item.id === report.treeId ? {
       ...item,
       status: report.observedStatus,
@@ -238,11 +241,6 @@ export default function App() {
       type: "edit",
       event: `${report.id} submitted as completion evidence for ${task.id}`,
       severity: report.observedStatus === "critical" ? "high" : "medium",
-    });
-    void submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft }).then((result) => {
-      if (!result?.report) return;
-      setFieldReports(result.reports || ((current) => [result.report, ...current.filter((item) => item.id !== report.id)]));
-      if (result.tasks) setTasks(result.tasks);
     });
     showToast(`${report.id} submitted. ${task.id} completed with evidence.`);
     return report;
@@ -297,13 +295,6 @@ export default function App() {
       scannedAt: nowLabel(),
     };
     setQrScanEvents((current) => [event, ...current]);
-    void recordSs4QrScanBackend({
-      rawId,
-      qrId: resolvedQr?.qrId,
-      treeId: event.treeId,
-      actorId: user.id,
-      role: user.role,
-    });
     appendAudit({
       type: scanResult === "success" ? "qr_scan" : "security",
       event: `${event.qrId} scan ${scanResult} for ${event.treeId}; routed to ${routedTo}`,
@@ -365,7 +356,7 @@ export default function App() {
   return (
     <AppShell role={user.role} user={user} activePage={activePage} language={language} onNavigate={navigate} onLogout={handleLogout}>
       {content}
-      {scannerOpen && <QRScanner role={user.role} trees={trees} qrCodes={qrCodes} language={language} onClose={() => setScannerOpen(false)} onComplete={completeScan} onScanEvent={recordQrScan} />}
+      {scannerOpen && <QRScanner role={user.role} trees={trees} qrCodes={qrCodes} language={language} onClose={() => setScannerOpen(false)} onComplete={completeScan} onAnalyzePhoto={analyzeFieldPhotoBackend} onScanEvent={recordQrScan} />}
       {scannedTree && user.role === ROLE.VISITOR && <TreeIdCardModal tree={scannedTree} language={language} onClose={() => setScannedTree(null)} onCollect={(tree) => { collect(tree); setScannedTree(null); }} />}
       {user.role === ROLE.VISITOR && activePage !== "chat" && <ChatFloatingButton language={language} onClick={() => navigate("chat")} />}
       <Toast message={toast} onClose={() => setToast("")} />
