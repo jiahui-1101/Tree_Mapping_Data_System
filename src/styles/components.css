@@ -117,6 +117,11 @@ th { color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform
 .task-card span { display: flex; justify-content: space-between; }
 .task-card h3 { margin: 13px 0 5px; font-size: 14px; }
 .task-card p { color: var(--text); font-size: 12px; }
+.task-progress-grid { display: grid; gap: 11px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.task-progress-card { min-height: 185px; text-align: left; }
+.task-progress-card small { display: block; margin-top: auto; color: var(--muted); line-height: 1.45; }
+.task-tracker-toolbar { align-items: flex-start; }
+.task-tracker-toolbar .toolbar-actions { flex-wrap: wrap; justify-content: flex-end; }
 .priority-urgent { border-left: 4px solid #df483a !important; }.priority-high { border-left: 4px solid #dfa328 !important; }
 .field-photo { display: grid; min-height: 120px; place-items: center; margin-bottom: 14px; border-radius: 9px; color: var(--muted); background: linear-gradient(135deg, #d7e7d3, #edf4ea); font-weight: 700; }
 

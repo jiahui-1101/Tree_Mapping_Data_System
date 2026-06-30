@@ -218,6 +218,34 @@ export default function App() {
       if (result?.tasks) setTasks(result.tasks);
     });
   };
+  const submitTaskEvidence = (task, draft) => {
+    const tree = trees.find((item) => item.id === draft.treeId);
+    if (!tree) {
+      showToast("Select a valid tree before completing this task.");
+      return null;
+    }
+    const reportDraft = { ...draft, taskId: task.id, notes: draft.notes || `Evidence submitted for ${task.id}.` };
+    const report = createFieldReport({ draft: reportDraft, tree, rangerName: user.name, tasks, existingReports: fieldReports });
+    setFieldReports((current) => [report, ...current]);
+    setTasks((current) => current.map((item) => item.id === task.id ? { ...item, status: "completed", completedAt: new Date().toISOString() } : item));
+    setTrees((current) => current.map((item) => item.id === report.treeId ? {
+      ...item,
+      status: report.observedStatus,
+      health: report.observedStatus === "critical" ? 38 : report.observedStatus === "monitor" ? 68 : 94,
+    } : item));
+    appendAudit({
+      type: "edit",
+      event: `${report.id} submitted as completion evidence for ${task.id}`,
+      severity: report.observedStatus === "critical" ? "high" : "medium",
+    });
+    void submitFieldReportBackend({ treeId: tree.id, rangerName: user.name, draft: reportDraft }).then((result) => {
+      if (!result?.report) return;
+      setFieldReports(result.reports || ((current) => [result.report, ...current.filter((item) => item.id !== report.id)]));
+      if (result.tasks) setTasks(result.tasks);
+    });
+    showToast(`${report.id} submitted. ${task.id} completed with evidence.`);
+    return report;
+  };
   const syncFieldState = (payload = {}) => {
     if (payload.tasks) setTasks(payload.tasks);
     if (payload.reports) setFieldReports(payload.reports);
@@ -309,7 +337,7 @@ export default function App() {
     case "schedule": content = <SchedulePage {...pageProps} onAddTask={addTask} />; break;
     case "rangers": content = <RangerManagementPage {...pageProps} />; break;
     case "tasks": content = <TaskTrackerPage {...pageProps} onUpdateTask={updateTask} />; break;
-    case "ranger-tasks": content = <RangerTasksPage {...pageProps} onUpdateTask={updateTask} onOpenScanner={() => setScannerOpen(true)} />; break;
+    case "ranger-tasks": content = <RangerTasksPage {...pageProps} onUpdateTask={updateTask} onSubmitTaskEvidence={submitTaskEvidence} onOpenScanner={() => setScannerOpen(true)} />; break;
     case "ranger-reports": content = <RangerReportsPage {...pageProps} />; break;
     case "qr": content = <QRPage role={user.role} language={language} onOpenScanner={() => setScannerOpen(true)} />; break;
     case "map": content = <MapPage {...pageProps} onOpenScanner={() => setScannerOpen(true)} />; break;

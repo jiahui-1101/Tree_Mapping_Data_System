@@ -2,7 +2,8 @@ ALTER TABLE ss2_field_tasks
   ADD COLUMN schedule_assignment_id INT NULL AFTER id,
   ADD COLUMN task_type ENUM('Patrol', 'Maintenance', 'Inspection', 'Urgent') NOT NULL DEFAULT 'Inspection' AFTER ranger,
   ADD COLUMN dispatched_at TIMESTAMP NULL AFTER notes,
-  ADD COLUMN completed_at TIMESTAMP NULL AFTER dispatched_at;
+  ADD COLUMN started_at TIMESTAMP NULL AFTER dispatched_at,
+  ADD COLUMN completed_at TIMESTAMP NULL AFTER started_at;
 
 CREATE INDEX idx_ss2_tasks_assignment ON ss2_field_tasks(schedule_assignment_id);
 
@@ -67,7 +68,3 @@ CREATE TABLE IF NOT EXISTS ss2_push_notifications (
   INDEX idx_ss2_notifications_ranger (ranger_id, read_at),
   INDEX idx_ss2_notifications_task (task_id)
 );
-
-ALTER TABLE ss2_field_tasks
-  ADD COLUMN started_at TIMESTAMP NULL AFTER dispatched_at;
-
