@@ -165,8 +165,10 @@ export function createApp({
   }));
 
   app.get("/api/visitor/collection", asyncRoute(async (request, response) => {
+    const visitorSession = await requireVisitorSession(request, response);
+    if (!visitorSession) return;
     sendResult(response, await backend.getVisitorCollection({
-      sessionId: sessionId(request),
+      sessionId: visitorSession.sessionId,
       language: request.query.language,
     }));
   }));
