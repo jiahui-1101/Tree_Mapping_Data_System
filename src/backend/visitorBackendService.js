@@ -1,4 +1,5 @@
 import { TREES } from "../data/trees.js";
+import crypto from "node:crypto";
 import { getPublicTreeCard, projectGrowth } from "../data/visitorTreeProfiles.js";
 import { VISITOR_INTEREST_IDS, visitorText } from "../services/visitorI18n.js";
 import { buildVisitorRoute, findTree, maskTreeForRole } from "../services/mockTreeService.js";
