@@ -143,6 +143,21 @@ export function createVisitorBackend({ config = getBackendConfig(), store = crea
       await store.reset();
     },
 
+    async createGuestVisitorSession({ language = "en", displayName = "Guest Visitor" } = {}) {
+      const selectedLanguage = normalizeLanguage(language);
+      const now = new Date().toISOString();
+      const session = await store.createSession({
+        sessionId: createSessionId(),
+        visitorType: "guest",
+        displayName: String(displayName || "Guest Visitor").trim() || "Guest Visitor",
+        language: selectedLanguage,
+        role: "Visitor",
+        createdAt: now,
+        lastSeenAt: now,
+      });
+      return { ok: true, session };
+    },
+
     listVisitorTreeProfiles({ language = "en", query = "", zone = "all" } = {}) {
       const selectedLanguage = normalizeLanguage(language);
       const needle = String(query || "").trim().toLowerCase();
