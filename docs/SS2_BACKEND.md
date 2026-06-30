@@ -20,7 +20,11 @@ This document describes the backend implementation for Subsystem 2 (Scheduling &
 
 ```text
 PORT=4174
-SS2_FIELD_STORE=memory
+SS2_FIELD_STORE=mysql
+DB_HOST=127.0.0.1
+DB_PORT=3306
+DB_USER=root
+DB_PASSWORD=
 DB_NAME=tree_mapping_data_system
 ```
 
