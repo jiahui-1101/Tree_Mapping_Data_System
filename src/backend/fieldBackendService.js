@@ -1,15 +1,19 @@
 import mysql from "mysql2/promise";
-import { INITIAL_FIELD_REPORTS } from "../data/fieldReports.js";
-import { RANGERS } from "../data/rangers.js";
-import { INITIAL_TASKS } from "../data/tasks.js";
 import { TREES } from "../data/trees.js";
-import { nextTaskId } from "../services/adminService.js";
 import { analyzeFieldPhoto, createFieldReport, filterFieldReports, filterRangerTasks } from "../services/rangerService.js";
 import { getBackendConfig } from "./backendConfig.js";
 
 const TASK_STATUSES = new Set(["pending", "in-progress", "completed", "escalated"]);
 const TASK_PRIORITIES = new Set(["normal", "high", "urgent"]);
 const RANGER_STATUSES = new Set(["active", "inactive"]);
+const ZONES = ["Arboretum", "Pemuliharaan", "Tanaman", "Riparian", "Tapak Semaian"];
+const WEEK_DAYS = [
+  { label: "Mon", offset: 0 },
+  { label: "Tue", offset: 1 },
+  { label: "Wed", offset: 2 },
+  { label: "Thu", offset: 3 },
+  { label: "Fri", offset: 4 },
+];
 
 function ok(data = {}) {
   return { ok: true, ...data };
@@ -17,10 +21,6 @@ function ok(data = {}) {
 
 function fail(status, error, message) {
   return { ok: false, status, error, message };
-}
-
-function clone(value) {
-  return JSON.parse(JSON.stringify(value));
 }
 
 function parseJson(value, fallback) {
@@ -41,6 +41,31 @@ function treeById(id) {
   return TREES.find((tree) => tree.id.toLowerCase() === String(id || "").toLowerCase()) || null;
 }
 
+function nextFieldTaskId(tasks = []) {
+  const max = tasks.reduce((highest, task) => {
+    const value = Number(String(task.id).match(/TSK-(\d+)/)?.[1] || 0);
+    return Math.max(highest, value);
+  }, 0);
+  return `TSK-${String(max + 1).padStart(3, "0")}`;
+}
+
+function toDateString(date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function getMonday(date = new Date()) {
+  const copy = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const day = copy.getUTCDay() || 7;
+  copy.setUTCDate(copy.getUTCDate() - day + 1);
+  return copy;
+}
+
+function buildWeekLabel(start = getMonday()) {
+  const end = new Date(start);
+  end.setUTCDate(start.getUTCDate() + 4);
+  return `${toDateString(start)} to ${toDateString(end)}`;
+}
+
 function rowToRanger(row) {
   return {
     id: row.id,
@@ -54,13 +79,61 @@ function rowToRanger(row) {
 function rowToTask(row) {
   return {
     id: row.id,
+    scheduleAssignmentId: row.schedule_assignment_id,
     title: row.title,
     treeId: row.tree_id,
     ranger: row.ranger,
+    taskType: row.task_type,
     source: row.source,
     priority: row.priority,
     status: row.status,
     notes: row.notes || "",
+    dispatchedAt: row.dispatched_at,
+    completedAt: row.completed_at,
+  };
+}
+
+function rowToScheduleWeek(row, assignments = []) {
+  return {
+    id: row.id,
+    createdBy: row.created_by,
+    weekLabel: row.week_label,
+    status: row.status,
+    generatedAt: row.generated_at,
+    approvedAt: row.approved_at,
+    aiReasoningSummary: row.ai_reasoning_summary || "",
+    assignments,
+  };
+}
+
+function rowToAssignment(row) {
+  return {
+    id: row.id,
+    scheduleWeekId: row.schedule_week_id,
+    rangerId: row.ranger_id,
+    rangerName: row.ranger_name,
+    zone: row.zone,
+    shiftDate: row.shift_date,
+    shiftDay: row.shift_day,
+    shiftStart: row.shift_start,
+    shiftEnd: row.shift_end,
+    priorityFlag: row.priority_flag,
+    aiReasoningNote: row.ai_reasoning_note || "",
+    manualOverride: Boolean(row.manual_override),
+    updatedBy: row.updated_by || "",
+  };
+}
+
+function rowToNotification(row) {
+  return {
+    id: row.id,
+    rangerId: row.ranger_id,
+    rangerName: row.ranger_name,
+    taskId: row.task_id,
+    payloadSummary: row.payload_summary,
+    deliveryStatus: row.delivery_status,
+    sentAt: row.sent_at,
+    readAt: row.read_at,
   };
 }
 
@@ -91,21 +164,63 @@ function rowToReport(row) {
   };
 }
 
-function buildSchedule(rangers = RANGERS) {
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri"];
-  const zones = ["Arboretum", "Pemuliharaan", "Tanaman", "Riparian", "Tapak Semaian"];
+function buildSchedule(rangers = []) {
   const active = rangers.filter((ranger) => ranger.status === "active");
   return {
     week: "1 - 5 June 2026",
-    days,
+    days: WEEK_DAYS.map((day) => day.label),
     assignments: active.map((ranger, rangerIndex) => ({
       rangerId: ranger.id,
       ranger: ranger.name,
-      cells: days.map((day, dayIndex) => ({
-        day,
-        zone: dayIndex === 0 ? ranger.zone : zones[(rangerIndex + dayIndex) % zones.length],
+      cells: WEEK_DAYS.map((day, dayIndex) => ({
+        day: day.label,
+        zone: dayIndex === 0 ? ranger.zone : ZONES[(rangerIndex + dayIndex) % ZONES.length],
       })),
     })),
+  };
+}
+
+function buildAiSchedule({ rangers = [], previousAssignments = [], weekStart = getMonday(), weekLabel = buildWeekLabel(weekStart), createdBy = "Admin" } = {}) {
+  const activeRangers = rangers.filter((ranger) => ranger.status === "active");
+  const lastZoneByRanger = new Map();
+  for (const assignment of previousAssignments) {
+    lastZoneByRanger.set(assignment.rangerId || assignment.ranger_id, assignment.zone);
+  }
+  const zoneLoad = new Map(ZONES.map((zone) => [zone, 0]));
+  const assignments = [];
+  for (const [rangerIndex, ranger] of activeRangers.entries()) {
+    const lastZone = lastZoneByRanger.get(ranger.id);
+    for (const day of WEEK_DAYS) {
+      const shift = new Date(weekStart);
+      shift.setUTCDate(weekStart.getUTCDate() + day.offset);
+      const rankedZones = ZONES
+        .map((zone, zoneIndex) => ({
+          zone,
+          score: (zoneLoad.get(zone) || 0) * 3 + (zone === lastZone ? 5 : 0) + ((zoneIndex + rangerIndex + day.offset) % ZONES.length),
+        }))
+        .sort((a, b) => a.score - b.score);
+      const chosen = rankedZones[0].zone;
+      zoneLoad.set(chosen, (zoneLoad.get(chosen) || 0) + 1);
+      assignments.push({
+        rangerId: ranger.id,
+        rangerName: ranger.name,
+        zone: chosen,
+        shiftDate: toDateString(shift),
+        shiftDay: day.label,
+        shiftStart: "08:00:00",
+        shiftEnd: "12:00:00",
+        priorityFlag: zoneLoad.get(chosen) > 3 ? "High" : "Normal",
+        aiReasoningNote: lastZone === chosen
+          ? `${ranger.name} remains in ${chosen} because this zone still needs coverage balance.`
+          : `${ranger.name} was rotated from ${lastZone || ranger.zone || "no previous patrol"} to ${chosen} to avoid repeated patrols and spread workload evenly.`,
+      });
+    }
+  }
+  return {
+    weekLabel,
+    createdBy,
+    aiReasoningSummary: `Generated ${assignments.length} patrol assignments for ${activeRangers.length} active ranger(s). The scheduler checks previous patrol zones, avoids repeating the latest zone where possible, and balances coverage across ${ZONES.join(", ")}.`,
+    assignments,
   };
 }
 
@@ -119,22 +234,28 @@ function createTaskDraft(draft = {}, tasks = []) {
   if (!TASK_PRIORITIES.has(priority)) return fail(400, "INVALID_PRIORITY", "Task priority must be normal, high, or urgent.");
   return ok({
     task: {
-      id: draft.id || nextTaskId(tasks),
+      id: draft.id || nextFieldTaskId(tasks),
+      scheduleAssignmentId: draft.scheduleAssignmentId || null,
       title,
       treeId,
       ranger,
+      taskType: draft.taskType || (priority === "urgent" ? "Urgent" : "Inspection"),
       source: draft.source || "Admin urgent dispatch",
       priority,
       status: draft.status || "pending",
       notes: draft.notes || `${title}${draft.zone ? ` Zone: ${draft.zone}.` : ""}`,
+      dispatchedAt: draft.dispatchedAt || null,
+      completedAt: draft.completedAt || null,
     },
   });
 }
 
 function createMemoryFieldBackend() {
-  let rangers = clone(RANGERS);
-  let tasks = clone(INITIAL_TASKS);
-  let reports = clone(INITIAL_FIELD_REPORTS);
+  let rangers = [];
+  let tasks = [];
+  let reports = [];
+  let currentSchedule = null;
+  let notifications = [];
 
   return {
     async health() {
@@ -157,6 +278,67 @@ function createMemoryFieldBackend() {
       rangers = existing ? rangers.map((item) => item.id === ranger.id ? ranger : item) : [...rangers, ranger];
       return ok({ ranger });
     },
+    async getCurrentSchedule() {
+      return ok({ schedule: currentSchedule });
+    },
+    async generateSchedule({ createdBy = "Admin", weekLabel } = {}) {
+      const generated = buildAiSchedule({ rangers, previousAssignments: currentSchedule?.assignments || [], weekLabel, createdBy });
+      currentSchedule = {
+        id: Date.now(),
+        status: "Draft",
+        generatedAt: new Date().toISOString(),
+        approvedAt: null,
+        ...generated,
+        assignments: generated.assignments.map((assignment, index) => ({ id: index + 1, ...assignment })),
+      };
+      return ok({ schedule: currentSchedule });
+    },
+    async updateScheduleAssignment(id, patch = {}) {
+      if (!currentSchedule) return fail(404, "SCHEDULE_NOT_FOUND", "No active schedule draft found.");
+      currentSchedule = {
+        ...currentSchedule,
+        assignments: currentSchedule.assignments.map((assignment) => Number(assignment.id) === Number(id)
+          ? { ...assignment, ...patch, manualOverride: true, updatedBy: patch.editedBy || "Admin" }
+          : assignment),
+      };
+      return ok({ schedule: currentSchedule });
+    },
+    async publishSchedule(id, { approvedBy = "Admin" } = {}) {
+      if (!currentSchedule || Number(currentSchedule.id) !== Number(id)) return fail(404, "SCHEDULE_NOT_FOUND", "Schedule week not found.");
+      const createdTasks = [];
+      for (const assignment of currentSchedule.assignments) {
+        const draft = createTaskDraft({
+          scheduleAssignmentId: assignment.id,
+          title: `Patrol ${assignment.zone}`,
+          treeId: assignment.zone,
+          ranger: assignment.rangerName,
+          taskType: "Patrol",
+          source: "Schedule",
+          priority: assignment.priorityFlag === "Critical" ? "urgent" : assignment.priorityFlag === "High" ? "high" : "normal",
+          status: "pending",
+          notes: `${assignment.shiftDay} ${assignment.shiftStart}-${assignment.shiftEnd}. ${assignment.aiReasoningNote}`,
+          dispatchedAt: new Date().toISOString(),
+        }, tasks);
+        if (!draft.ok) continue;
+        tasks = [draft.task, ...tasks];
+        createdTasks.push(draft.task);
+        notifications = [{
+          id: notifications.length + 1,
+          rangerId: assignment.rangerId,
+          rangerName: assignment.rangerName,
+          taskId: draft.task.id,
+          payloadSummary: `New patrol task: ${assignment.zone} on ${assignment.shiftDay}.`,
+          deliveryStatus: "Sent",
+          sentAt: new Date().toISOString(),
+          readAt: null,
+        }, ...notifications];
+      }
+      currentSchedule = { ...currentSchedule, status: "Published", approvedAt: new Date().toISOString(), approvedBy };
+      return ok({ schedule: currentSchedule, tasks, createdTasks, notifications });
+    },
+    async listNotifications({ ranger = "" } = {}) {
+      return notifications.filter((item) => !ranger || item.rangerName === ranger || item.rangerId === ranger);
+    },
     async listTasks(filters = {}) {
       return filterRangerTasks(tasks, filters.ranger || "", filters);
     },
@@ -167,6 +349,17 @@ function createMemoryFieldBackend() {
       const created = createTaskDraft(draft, tasks);
       if (!created.ok) return created;
       tasks = [created.task, ...tasks];
+      const ranger = rangers.find((item) => item.name === created.task.ranger);
+      notifications = [{
+        id: notifications.length + 1,
+        rangerId: ranger?.id || created.task.ranger,
+        rangerName: created.task.ranger,
+        taskId: created.task.id,
+        payloadSummary: `${created.task.priority === "urgent" ? "Urgent" : "New"} task: ${created.task.title}`,
+        deliveryStatus: "Sent",
+        sentAt: new Date().toISOString(),
+        readAt: null,
+      }, ...notifications];
       return ok({ task: created.task, tasks });
     },
     async updateTaskStatus(id, status) {
@@ -207,12 +400,6 @@ function createMemoryFieldBackend() {
         schedule: buildSchedule(rangers),
       });
     },
-    async reset() {
-      rangers = clone(RANGERS);
-      tasks = clone(INITIAL_TASKS);
-      reports = clone(INITIAL_FIELD_REPORTS);
-      return ok({ rangers, tasks, reports });
-    },
   };
 }
 
@@ -226,9 +413,23 @@ function createMysqlFieldBackend(config) {
     [ranger.id, ranger.name, ranger.zone, ranger.phone, ranger.status]
   );
   const insertTask = (connection, task) => connection.execute(
-    `INSERT INTO ss2_field_tasks (id, title, tree_id, ranger, source, priority, status, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    [task.id, task.title, task.treeId, task.ranger, task.source, task.priority, task.status, task.notes || ""]
+    `INSERT INTO ss2_field_tasks
+      (id, schedule_assignment_id, title, tree_id, ranger, task_type, source, priority, status, notes, dispatched_at, completed_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      task.id,
+      task.scheduleAssignmentId || null,
+      task.title,
+      task.treeId,
+      task.ranger,
+      task.taskType || "Inspection",
+      task.source,
+      task.priority,
+      task.status,
+      task.notes || "",
+      task.dispatchedAt || null,
+      task.completedAt || null,
+    ]
   );
   const insertReport = (connection, report) => connection.execute(
     `INSERT INTO ss2_field_reports
@@ -292,8 +493,150 @@ function createMysqlFieldBackend(config) {
       await insertRanger(pool, ranger);
       return ok({ ranger });
     },
+    async getCurrentSchedule() {
+      const [weekRows] = await pool.query("SELECT * FROM ss2_schedule_weeks ORDER BY generated_at DESC, id DESC LIMIT 1");
+      if (!weekRows[0]) return ok({ schedule: null });
+      const [assignmentRows] = await pool.execute("SELECT * FROM ss2_schedule_assignments WHERE schedule_week_id = ? ORDER BY shift_date, ranger_name", [weekRows[0].id]);
+      return ok({ schedule: rowToScheduleWeek(weekRows[0], assignmentRows.map(rowToAssignment)) });
+    },
+    async generateSchedule({ createdBy = "Admin", weekLabel } = {}) {
+      const rangers = await this.listRangers({ status: "active" });
+      if (!rangers.length) return fail(400, "NO_ACTIVE_RANGERS", "No active rangers available for scheduling.");
+      const [historyRows] = await pool.query("SELECT * FROM ss2_schedule_assignments ORDER BY shift_date DESC, id DESC LIMIT 50");
+      const baseWeekLabel = weekLabel || buildWeekLabel();
+      const [duplicateRows] = await pool.execute("SELECT id FROM ss2_schedule_weeks WHERE week_label = ?", [baseWeekLabel]);
+      const finalWeekLabel = duplicateRows.length ? `${baseWeekLabel} #${duplicateRows.length + 1}` : baseWeekLabel;
+      const generated = buildAiSchedule({
+        rangers,
+        previousAssignments: historyRows.map(rowToAssignment),
+        weekLabel: finalWeekLabel,
+        createdBy,
+      });
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        const [weekResult] = await connection.execute(
+          "INSERT INTO ss2_schedule_weeks (created_by, week_label, status, ai_reasoning_summary) VALUES (?, ?, 'Draft', ?)",
+          [generated.createdBy, generated.weekLabel, generated.aiReasoningSummary]
+        );
+        const scheduleWeekId = weekResult.insertId;
+        for (const assignment of generated.assignments) {
+          await connection.execute(
+            `INSERT INTO ss2_schedule_assignments
+              (schedule_week_id, ranger_id, ranger_name, zone, shift_date, shift_day, shift_start, shift_end, priority_flag, ai_reasoning_note)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              scheduleWeekId,
+              assignment.rangerId,
+              assignment.rangerName,
+              assignment.zone,
+              assignment.shiftDate,
+              assignment.shiftDay,
+              assignment.shiftStart,
+              assignment.shiftEnd,
+              assignment.priorityFlag,
+              assignment.aiReasoningNote,
+            ]
+          );
+        }
+        await connection.commit();
+        return await this.getCurrentSchedule();
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    },
+    async updateScheduleAssignment(id, patch = {}) {
+      const [rows] = await pool.execute("SELECT * FROM ss2_schedule_assignments WHERE id = ?", [id]);
+      if (!rows[0]) return fail(404, "ASSIGNMENT_NOT_FOUND", "Schedule assignment not found.");
+      const current = rowToAssignment(rows[0]);
+      const rangers = await this.listRangers();
+      const nextRanger = patch.rangerId ? rangers.find((ranger) => ranger.id === patch.rangerId) : null;
+      const next = {
+        rangerId: nextRanger?.id || current.rangerId,
+        rangerName: nextRanger?.name || patch.rangerName || current.rangerName,
+        zone: patch.zone || current.zone,
+        editedBy: patch.editedBy || "Admin",
+        editReason: patch.editReason || "Admin manually adjusted the AI-generated schedule.",
+      };
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        await connection.execute(
+          `UPDATE ss2_schedule_assignments
+           SET ranger_id = ?, ranger_name = ?, zone = ?, manual_override = TRUE, updated_by = ?
+           WHERE id = ?`,
+          [next.rangerId, next.rangerName, next.zone, next.editedBy, id]
+        );
+        await connection.execute(
+          `INSERT INTO ss2_schedule_change_logs
+            (assignment_id, schedule_week_id, old_ranger_id, old_ranger_name, old_zone, new_ranger_id, new_ranger_name, new_zone, edited_by, edit_reason)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [id, current.scheduleWeekId, current.rangerId, current.rangerName, current.zone, next.rangerId, next.rangerName, next.zone, next.editedBy, next.editReason]
+        );
+        await connection.commit();
+        return await this.getCurrentSchedule();
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    },
+    async publishSchedule(id, { approvedBy = "Admin" } = {}) {
+      const [weekRows] = await pool.execute("SELECT * FROM ss2_schedule_weeks WHERE id = ?", [id]);
+      if (!weekRows[0]) return fail(404, "SCHEDULE_NOT_FOUND", "Schedule week not found.");
+      const [assignmentRows] = await pool.execute("SELECT * FROM ss2_schedule_assignments WHERE schedule_week_id = ? ORDER BY shift_date, ranger_name", [id]);
+      const assignments = assignmentRows.map(rowToAssignment);
+      const existingTasks = await this.listTasks();
+      const connection = await pool.getConnection();
+      const createdTasks = [];
+      try {
+        await connection.beginTransaction();
+        await connection.execute("UPDATE ss2_schedule_weeks SET status = 'Published', approved_at = CURRENT_TIMESTAMP WHERE id = ?", [id]);
+        for (const assignment of assignments) {
+          const [existingRows] = await connection.execute("SELECT * FROM ss2_field_tasks WHERE schedule_assignment_id = ? LIMIT 1", [assignment.id]);
+          if (existingRows[0]) continue;
+          const created = createTaskDraft({
+            scheduleAssignmentId: assignment.id,
+            title: `Patrol ${assignment.zone}`,
+            treeId: assignment.zone,
+            ranger: assignment.rangerName,
+            taskType: "Patrol",
+            source: "Schedule",
+            priority: assignment.priorityFlag === "Critical" ? "urgent" : assignment.priorityFlag === "High" ? "high" : "normal",
+            status: "pending",
+            notes: `${assignment.shiftDay} ${assignment.shiftStart}-${assignment.shiftEnd}. ${assignment.aiReasoningNote}`,
+            dispatchedAt: new Date().toISOString().slice(0, 19).replace("T", " "),
+          }, [...existingTasks, ...createdTasks]);
+          if (!created.ok) continue;
+          await insertTask(connection, created.task);
+          await connection.execute(
+            `INSERT INTO ss2_push_notifications (ranger_id, ranger_name, task_id, payload_summary, delivery_status)
+             VALUES (?, ?, ?, ?, 'Sent')`,
+            [assignment.rangerId, assignment.rangerName, created.task.id, `New patrol task: ${assignment.zone} on ${assignment.shiftDay}.`]
+          );
+          createdTasks.push(created.task);
+        }
+        await connection.commit();
+        return ok({ schedule: (await this.getCurrentSchedule()).schedule, tasks: await this.listTasks(), createdTasks });
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
+    },
+    async listNotifications({ ranger = "" } = {}) {
+      const [rows] = ranger
+        ? await pool.execute("SELECT * FROM ss2_push_notifications WHERE ranger_id = ? OR ranger_name = ? ORDER BY sent_at DESC, id DESC", [ranger, ranger])
+        : await pool.query("SELECT * FROM ss2_push_notifications ORDER BY sent_at DESC, id DESC");
+      return rows.map(rowToNotification);
+    },
     async listTasks(filters = {}) {
-      const [rows] = await pool.query("SELECT * FROM ss2_field_tasks ORDER BY created_at DESC, id DESC");
+      const [rows] = await pool.query("SELECT * FROM ss2_field_tasks ORDER BY FIELD(priority, 'urgent', 'high', 'normal'), created_at DESC, id DESC");
       return filterRangerTasks(rows.map(rowToTask), filters.ranger || "", filters);
     },
     async findTask(id) {
@@ -304,7 +647,28 @@ function createMysqlFieldBackend(config) {
       const tasks = await this.listTasks();
       const created = createTaskDraft(draft, tasks);
       if (!created.ok) return created;
-      await insertTask(pool, created.task);
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        await insertTask(connection, created.task);
+        const [rangerRows] = await connection.execute("SELECT * FROM ss2_rangers WHERE name = ? LIMIT 1", [created.task.ranger]);
+        await connection.execute(
+          `INSERT INTO ss2_push_notifications (ranger_id, ranger_name, task_id, payload_summary, delivery_status)
+           VALUES (?, ?, ?, ?, 'Sent')`,
+          [
+            rangerRows[0]?.id || created.task.ranger,
+            created.task.ranger,
+            created.task.id,
+            `${created.task.priority === "urgent" ? "Urgent" : "New"} task: ${created.task.title}`,
+          ]
+        );
+        await connection.commit();
+      } catch (error) {
+        await connection.rollback();
+        throw error;
+      } finally {
+        connection.release();
+      }
       return ok({ task: created.task, tasks: await this.listTasks() });
     },
     async updateTaskStatus(id, status) {
@@ -354,6 +718,7 @@ function createMysqlFieldBackend(config) {
       const [reportRows] = await pool.query("SELECT * FROM ss2_field_reports");
       const rangers = await this.listRangers();
       const tasks = taskRows.map(rowToTask);
+      const currentSchedule = await this.getCurrentSchedule();
       return ok({
         summary: {
           totalTasks: tasks.length,
@@ -363,27 +728,8 @@ function createMysqlFieldBackend(config) {
           totalReports: reportRows.length,
           activeRangers: rangers.filter((ranger) => ranger.status === "active").length,
         },
-        schedule: buildSchedule(rangers),
+        schedule: currentSchedule.schedule || buildSchedule(rangers),
       });
-    },
-    async reset() {
-      const connection = await pool.getConnection();
-      try {
-        await connection.beginTransaction();
-        await connection.query("DELETE FROM ss2_field_reports");
-        await connection.query("DELETE FROM ss2_field_tasks");
-        await connection.query("DELETE FROM ss2_rangers");
-        for (const ranger of RANGERS) await insertRanger(connection, ranger);
-        for (const task of INITIAL_TASKS) await insertTask(connection, task);
-        for (const report of INITIAL_FIELD_REPORTS) await insertReport(connection, report);
-        await connection.commit();
-        return ok({ rangers: await this.listRangers(), tasks: await this.listTasks(), reports: await this.listReports() });
-      } catch (error) {
-        await connection.rollback();
-        throw error;
-      } finally {
-        connection.release();
-      }
     },
   };
 }
