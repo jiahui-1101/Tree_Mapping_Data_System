@@ -139,6 +139,9 @@ th { color: var(--muted); font-size: 10px; letter-spacing: .07em; text-transform
 .ranger-summary { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 15px; border: 1px solid var(--border); border-radius: 12px; background: #fff; }
 .ranger-summary div { margin-right: auto; }.ranger-summary p { color: var(--muted); font-size: 12px; }
 .ranger-summary > strong { padding: 8px 15px; border-radius: 8px; background: var(--cream-dark); text-align: center; }.ranger-summary > strong small { margin-top: 3px; font-size: 10px; }
+.ranger-management-summary { display: grid; gap: 10px; margin-bottom: 14px; grid-template-columns: repeat(4, 1fr); }
+.ranger-management-summary span { display: grid; gap: 2px; padding: 11px 12px; border: 1px solid var(--green-100); border-radius: 9px; background: var(--green-50); color: var(--muted); font-size: 11px; }
+.ranger-management-summary b { color: var(--green-700); font-size: 20px; }
 .task-tabs { width: 100%; flex-wrap: wrap; margin-bottom: 14px; }
 .task-tabs button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 7px; }
 .task-tabs b { padding: 1px 6px; border-radius: 999px; background: var(--green-100); font-size: 10px; }
