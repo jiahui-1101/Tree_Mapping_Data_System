@@ -7,7 +7,7 @@ import { createVisitorBackend } from "./visitorBackendService.js";
 
 export function createApp({
   backend = createVisitorBackend(),
-  fieldBackend = createFieldBackend(),
+  fieldBackend = createFieldBackend({ config: { ...getBackendConfig(), fieldStore: "memory" } }),
   maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
 } = {}) {
   const app = express();
