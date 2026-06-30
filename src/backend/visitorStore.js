@@ -56,6 +56,13 @@ export function createVisitorStore({ filePath, persist = true, initialState } = 
       await save();
     },
 
+    async createSession(session) {
+      await ensureLoaded();
+      state.sessions[session.sessionId] = { ...session };
+      await save();
+      return { ...state.sessions[session.sessionId] };
+    },
+
     async getCollection(sessionId) {
       await ensureLoaded();
       return [...new Set(state.collections[sessionId] || [])];
