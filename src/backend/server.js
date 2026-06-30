@@ -9,7 +9,7 @@ import { createVisitorBackend } from "./visitorBackendService.js";
 
 export function createApp({
   backend = createVisitorBackend(),
-  fieldBackend = createFieldBackend({ config: { ...getBackendConfig(), fieldStore: "memory" } }),
+  fieldBackend = createFieldBackend({ config: getBackendConfig() }),
   maintenanceBackend = createMaintenanceBackend({ config: { ...getBackendConfig(), maintenanceStore: "memory" } }),
   ss4Backend = createSs4Backend({ config: getBackendConfig() }),
   itSupportBackend = createItSupportBackend({ config: getBackendConfig() }),
