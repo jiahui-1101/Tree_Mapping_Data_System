@@ -14,6 +14,9 @@ const MAP_LAYERS = [
   { id: "visitors", label: "visitor activity" },
 ];
 
+const GOOGLE_MAPS_EMBED_URL = import.meta.env.VITE_GOOGLE_MAPS_EMBED_URL
+  || "https://www.google.com/maps?q=Taman%20Botani%20Johor%20Batu%20Pahat&output=embed";
+
 export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], visitorHeatmapAggregates = [], onOpenScanner }) {
   const [layer, setLayer] = useState("health");
   const [selected, setSelected] = useState(null);
@@ -95,6 +98,18 @@ export default function MapPage({ role, trees, qrCodes = [], qrScanEvents = [], 
           </div>
         </Card>
       </div>
+      <Card title="Google Maps Live Location Reference" subtitle="Public Google Maps embed used to cross-check TBJ access, road, and site orientation">
+        <iframe
+          className="google-map-embed"
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          src={GOOGLE_MAPS_EMBED_URL}
+          title="Taman Botani Johor Google Maps reference"
+        />
+        <div className="map-source-links">
+          <a href={TBJ_GOOGLE_MAPS_URL} target="_blank" rel="noreferrer">Open full Google Maps location ↗</a>
+        </div>
+      </Card>
       <div className="two-column map-stats">
         <Card title={selectedPlot ? selectedPlot.name : selectedZone ? selectedZone.name : "Stakeholder Plot Layer"} subtitle={selectedPlot ? selectedPlot.source : selectedZone ? "Official zone selected on the 3D map" : TBJ_OFFICIAL_CONTEXT.description}>
           {selectedPlot ? (

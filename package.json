@@ -4,11 +4,11 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --configLoader runner",
     "dev:backend": "node src/backend/server.js",
     "backend": "node src/backend/server.js",
-    "build": "vite build",
-    "preview": "vite preview",
+    "build": "vite build --configLoader runner",
+    "preview": "vite preview --configLoader runner",
     "test": "node --test"
   },
   "dependencies": {

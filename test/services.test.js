@@ -482,6 +482,7 @@ test("SS3 database schema documents visitor integration tables", () => {
 test("SS4 backend returns official map payload with role-safe tree coordinates", async () => {
   const backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
   const adminMap = await backend.getMapPayload({ role: ROLE.ADMIN });
+  const adminDisplayMap = await backend.getMapPayload({ role: "Admin" });
   const visitorMap = await backend.getMapPayload({ role: ROLE.VISITOR });
   assert.equal(adminMap.ok, true);
   assert.equal(adminMap.facts.areaAcres, 245.04);
@@ -489,6 +490,7 @@ test("SS4 backend returns official map payload with role-safe tree coordinates",
   assert.ok(adminMap.landmarks.some((landmark) => landmark.id === "bukit-besi"));
   assert.ok(adminMap.sourceLinks.jln.includes("jln.gov.my"));
   assert.ok(adminMap.layerConfig.some((layer) => layer.layerId === "visitors"));
+  assert.ok(adminDisplayMap.layerConfig.some((layer) => layer.layerId === "visitors"));
   assert.ok(!visitorMap.layerConfig.some((layer) => layer.layerId === "visitors"));
   assert.equal(visitorMap.trees.find((tree) => tree.id === "TBJ-005").x, null);
 });
@@ -517,6 +519,8 @@ test("SS4 backend supports spatial simulation confirmation and audit traceabilit
   });
   assert.equal(simulation.ok, true);
   assert.equal(simulation.suitabilityLabel, "High");
+  assert.equal(simulation.provider, "Local rule engine");
+  assert.equal(simulation.fallbackUsed, true);
   assert.ok(simulation.canopyRadiusM > 0);
   const confirmed = await backend.confirmSpatialPlan({
     point: { x: 20, y: 20 },
@@ -530,6 +534,21 @@ test("SS4 backend supports spatial simulation confirmation and audit traceabilit
   assert.equal(plans.data[0].planId, confirmed.record.planId);
   const logs = await backend.getAuditLogs();
   assert.ok(logs.data[0].event.includes(confirmed.record.planId));
+});
+
+test("SS4 spatial AI provider falls back when no external API key is configured", async () => {
+  const backend = createSs4Backend({
+    config: { ss4AiProvider: "openai", aiTimeoutMs: 10, openaiApiKey: "", openaiModel: "gpt-4o-mini" },
+    store: createSs4Store({ persist: false }),
+  });
+  const simulation = await backend.simulateSpatialPlan({
+    point: { x: 20, y: 20 },
+    species: "Pterocarpus indicus",
+    targetZone: "Arboretum",
+  });
+  assert.equal(simulation.ok, true);
+  assert.equal(simulation.provider, "Local rule engine");
+  assert.equal(simulation.fallbackUsed, true);
 });
 
 test("SS4 Express API exposes map, QR, spatial and audit endpoints", async () => {
@@ -571,6 +590,8 @@ test("SS4 database schema documents map, QR, spatial, heatmap and security table
   assert.match(schema, /CREATE TABLE IF NOT EXISTS qr_codes/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS qr_scan_events/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS spatial_planning_records/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ai_simulation_logs/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS map_layer_config/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS visitor_heatmap_aggregate/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS audit_logs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS security_alerts/);

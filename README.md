@@ -163,7 +163,7 @@ Configuration is documented in `.env.example`, and the full backend notes are in
 
 ### SS4 Backend API
 
-Subsystem 4 is implemented in `src/backend/ss4BackendService.js` and runs inside the same Express backend. It supports the map, QR, spatial planning, overlay analytics, and audit/security requirements with JSON-file persistence for local demo reliability.
+Subsystem 4 is implemented in `src/backend/ss4BackendService.js` and runs inside the same Express backend. It supports the map, QR, spatial planning, overlay analytics, and audit/security requirements with JSON-file persistence for local demo reliability and optional MySQL persistence through `SS4_STORE=mysql`.
 
 | Feature | Endpoint |
 | --- | --- |
@@ -174,7 +174,7 @@ Subsystem 4 is implemented in `src/backend/ss4BackendService.js` and runs inside
 | Visitor heatmap analytics | `GET /api/ss4/analytics/heatmap` |
 | Audit and security monitoring | `GET /api/ss4/audit-logs`, `GET /api/ss4/security-alerts` |
 
-The SS4 production database design is documented in `docs/database/ss4_schema.sql`, and the full backend notes are in `docs/SS4_BACKEND.md`.
+The SS4 production database design is documented in `docs/database/ss4_schema.sql`, and the full backend notes are in `docs/SS4_BACKEND.md`. Spatial planning can use Gemini/OpenAI through `SS4_AI_PROVIDER`, then falls back to local suitability rules. The QR scanner uses browser camera APIs with a manual QR fallback, and the SS4 map page includes a Google Maps embed reference with a local 3D map fallback.
 
 ## Demo Accounts
 
