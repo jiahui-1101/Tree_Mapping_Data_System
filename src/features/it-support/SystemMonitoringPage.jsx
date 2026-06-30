@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import Modal from "../../components/common/Modal.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { SERVICE_LOGS, SYSTEM_SERVICES } from "../../data/itSupport.js";
+import { fetchItServiceLogsBackend, fetchItServicesBackend, runItServiceActionBackend } from "../../services/itSupportApiService.js";
 import { filterServiceLogs, getServiceLogs } from "../../services/itSupportService.js";
 
 export default function SystemMonitoringPage({ showToast }) {
@@ -10,8 +11,28 @@ export default function SystemMonitoringPage({ showToast }) {
   const [logs, setLogs] = useState(SERVICE_LOGS);
   const [selectedService, setSelectedService] = useState(null);
   const [logLevel, setLogLevel] = useState("all");
+  const [source, setSource] = useState("local fallback");
 
-  const runAction = (id, action) => {
+  useEffect(() => {
+    let mounted = true;
+    fetchItServicesBackend().then((payload) => {
+      if (mounted && payload?.ok) {
+        setServices(payload.data || []);
+        setSource("backend API");
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
+
+  const runAction = async (id, action) => {
+    const backendResult = await runItServiceActionBackend({ serviceId: id, action });
+    if (backendResult?.ok) {
+      setServices((current) => current.map((service) => service.id === id ? backendResult.service : service));
+      setLogs((current) => [backendResult.log, ...current]);
+      setSource("backend API");
+      showToast(`${action} completed through IT Support backend.`);
+      return;
+    }
     if (action === "restart") {
       setServices((current) => current.map((service) => service.id === id ? { ...service, status: "online", latency: "120 ms", lastChecked: "Just now" } : service));
       const service = services.find((item) => item.id === id);
@@ -24,7 +45,7 @@ export default function SystemMonitoringPage({ showToast }) {
 
   return (
     <>
-      <Card title="System Monitoring" subtitle="Mock service status for IT Support operations">
+      <Card title="System Monitoring" subtitle={`Service status for IT Support operations · ${source}`}>
         <div className="it-monitoring-grid">
           {services.map((service) => (
             <article className={`it-monitor-card it-service-${service.status}`} key={service.id}>
@@ -44,7 +65,15 @@ export default function SystemMonitoringPage({ showToast }) {
               <div className="button-row">
                 <button className="button button-small" onClick={() => runAction(service.id, "restart")}>Restart demo service</button>
                 <button className="button button-small button-outline" onClick={() => runAction(service.id, "diagnostic")}>Run diagnostic</button>
-                <button className="button button-small button-outline" onClick={() => { setSelectedService(service); setLogLevel("all"); }}>View logs</button>
+                <button className="button button-small button-outline" onClick={async () => {
+                  const payload = await fetchItServiceLogsBackend(service.id);
+                  if (payload?.ok) {
+                    setLogs((current) => [...payload.data, ...current.filter((log) => log.serviceId !== service.id)]);
+                    setSource("backend API");
+                  }
+                  setSelectedService(service);
+                  setLogLevel("all");
+                }}>View logs</button>
               </div>
             </article>
           ))}

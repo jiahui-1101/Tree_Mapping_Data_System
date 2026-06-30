@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Card from "../../components/common/Card.jsx";
 import StatusPill from "../../components/common/StatusPill.jsx";
 import { ACCESS_USERS } from "../../data/itSupport.js";
+import { fetchItUsersBackend, updateItUserAccessBackend } from "../../services/itSupportApiService.js";
 import { filterAccessUsers } from "../../services/itSupportService.js";
 
 export default function UserAccessPage({ showToast }) {
@@ -10,24 +11,52 @@ export default function UserAccessPage({ showToast }) {
   const [role, setRole] = useState("all");
   const [status, setStatus] = useState("all");
   const [session, setSession] = useState("all");
+  const [source, setSource] = useState("local fallback");
+
+  useEffect(() => {
+    let mounted = true;
+    fetchItUsersBackend().then((payload) => {
+      if (mounted && payload?.ok) {
+        setUsers(payload.data || []);
+        setSource("backend API");
+      }
+    });
+    return () => { mounted = false; };
+  }, []);
 
   const filteredUsers = useMemo(() => filterAccessUsers(users, { query, role, status, session }), [query, role, session, status, users]);
   const activeUsers = users.filter((user) => user.status === "active").length;
   const lockedUsers = users.filter((user) => user.status === "locked").length;
   const invalidatedSessions = users.filter((user) => user.session.toLowerCase().includes("invalidated")).length;
 
-  const toggleLock = (id) => {
-    setUsers((current) => current.map((user) => user.id === id ? { ...user, status: user.status === "locked" ? "active" : "locked", session: user.status === "locked" ? "Session restored by IT Support" : "Locked by IT Support" } : user));
-    showToast("Account access status changed in frontend demo state.");
+  const applyUserAction = async (id, action, fallbackPatch, message) => {
+    const backendResult = await updateItUserAccessBackend({ userId: id, action });
+    if (backendResult?.user) {
+      setUsers((current) => current.map((user) => user.id === id ? backendResult.user : user));
+      setSource("backend API");
+      showToast(message.replace("demo", "backend"));
+      return;
+    }
+    setUsers((current) => current.map((user) => user.id === id ? { ...user, ...fallbackPatch(user) } : user));
+    showToast(`${message} Local fallback used.`);
+  };
+
+  const toggleLock = (user) => {
+    const action = user.status === "locked" ? "unlock" : "lock";
+    applyUserAction(
+      user.id,
+      action,
+      (current) => ({ status: current.status === "locked" ? "active" : "locked", session: current.status === "locked" ? "Session restored by IT Support" : "Locked by IT Support" }),
+      "Account access status changed through demo workflow.",
+    );
   };
 
   const invalidateSession = (id) => {
-    setUsers((current) => current.map((user) => user.id === id ? { ...user, session: "Session invalidated by IT Support" } : user));
-    showToast("Active session invalidated in demo audit workflow.");
+    applyUserAction(id, "invalidate-session", () => ({ session: "Session invalidated by IT Support" }), "Active session invalidated in demo audit workflow.");
   };
 
   return (
-    <Card title="User & Access Control" subtitle="Demo account support for system roles">
+    <Card title="User & Access Control" subtitle={`Account support for system roles · ${source}`}>
       <div className="it-user-summary">
         <article><strong>{users.length}</strong><span>Total users</span></article>
         <article><strong>{activeUsers}</strong><span>Active users</span></article>
@@ -66,8 +95,8 @@ export default function UserAccessPage({ showToast }) {
             <td>{user.lastLogin}</td>
             <td>
               <div className="button-row">
-                <button className="table-action" onClick={() => toggleLock(user.id)}>{user.status === "locked" ? "Unlock" : "Lock"}</button>
-                <button className="table-action" onClick={() => showToast(`Password reset link prepared for ${user.id} in demo mode.`)}>Reset password</button>
+                <button className="table-action" onClick={() => toggleLock(user)}>{user.status === "locked" ? "Unlock" : "Lock"}</button>
+                <button className="table-action" onClick={() => applyUserAction(user.id, "reset-password", () => ({ session: "Password reset prepared by IT Support" }), `Password reset link prepared for ${user.id} in demo mode.`)}>Reset password</button>
                 <button className="table-action" onClick={() => invalidateSession(user.id)}>Invalidate session</button>
               </div>
             </td>
