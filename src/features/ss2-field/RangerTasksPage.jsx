@@ -31,7 +31,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const [status, setStatus] = useState("all");
   const [priority, setPriority] = useState("all");
   const [source, setSource] = useState("all");
-  const [activeTab, setActiveTab] = useState("schedule");
+  const [activeTab, setActiveTab] = useState("all");
   const [nowMs, setNowMs] = useState(Date.now());
   const [completionTask, setCompletionTask] = useState(null);
   const [evidenceTreeId, setEvidenceTreeId] = useState("");
@@ -41,16 +41,20 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const [evidenceNotes, setEvidenceNotes] = useState("");
   const rangerName = user?.name || "";
   const rangerTasks = useMemo(() => filterRangerTasks(tasks, rangerName), [rangerName, tasks]);
-  const filteredTasks = useMemo(() => {
-    const visible = filterRangerTasks(tasks, rangerName, { query, status, priority, source });
-    if (activeTab === "history") return visible;
-    return visible.filter((task) => activeTab === "schedule" ? isScheduleTask(task) : !isScheduleTask(task));
-  }, [activeTab, priority, query, rangerName, source, status, tasks]);
+  const baseFilteredTasks = useMemo(() => filterRangerTasks(tasks, rangerName, { query, status, priority, source }), [priority, query, rangerName, source, status, tasks]);
+  const visibleTasks = useMemo(() => baseFilteredTasks.filter((task) => {
+    if (activeTab === "history") return task.status === "completed";
+    if (task.status === "completed") return false;
+    if (activeTab === "schedule") return isScheduleTask(task);
+    if (activeTab === "special") return !isScheduleTask(task);
+    return true;
+  }), [activeTab, baseFilteredTasks]);
   const completed = rangerTasks.filter((task) => task.status === "completed").length;
   const active = rangerTasks.filter((task) => task.status === "pending" || task.status === "in-progress").length;
   const urgentHigh = rangerTasks.filter((task) => task.priority === "urgent" || task.priority === "high").length;
-  const scheduleCount = rangerTasks.filter(isScheduleTask).length;
-  const specialCount = rangerTasks.length - scheduleCount;
+  const activeTasks = rangerTasks.filter((task) => task.status !== "completed");
+  const scheduleCount = activeTasks.filter(isScheduleTask).length;
+  const specialCount = activeTasks.filter((task) => !isScheduleTask(task)).length;
   const activePatrol = rangerTasks.find((task) => task.status === "in-progress");
   const sources = [...new Set(rangerTasks.map((task) => task.source))];
 
@@ -102,6 +106,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
       <div className="ranger-summary"><span className="avatar">{user?.initials || "R"}</span><div><h3>{rangerName}</h3><p>{user?.id || "Ranger"} · {activePatrol ? `Tracking ${activePatrol.id} for ${elapsedLabel(activePatrol.startedAt, nowMs)}` : "Ready for dispatch"}</p></div><strong>{rangerTasks.length}<small>Assigned</small></strong><strong>{active}<small>Active</small></strong><strong>{completed}<small>Completed</small></strong><strong>{urgentHigh}<small>Urgent/High</small></strong></div>
       <Card title="Today's Task Bar" subtitle="Scheduled patrols and special admin dispatches are separated for field use">
         <div className="segmented task-tabs">
+          <button className={activeTab === "all" ? "active" : ""} onClick={() => setActiveTab("all")}>View All <b>{active}</b></button>
           <button className={activeTab === "schedule" ? "active" : ""} onClick={() => setActiveTab("schedule")}>Normal Schedule <b>{scheduleCount}</b></button>
           <button className={activeTab === "special" ? "active" : ""} onClick={() => setActiveTab("special")}>Special Tasks <b>{specialCount}</b></button>
           <button className={activeTab === "history" ? "active" : ""} onClick={() => setActiveTab("history")}>History <b>{completed}</b></button>
@@ -120,10 +125,8 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
             </select>
           </div>
         </div>
-        <div className="ranger-task-stack">
-          {filteredTasks
-            .filter((task) => activeTab === "history" ? task.status === "completed" : task.status !== "completed")
-            .map((task) => <article key={task.id} className={`mobile-task priority-${task.priority}`}>
+        <div className="ranger-task-grid">
+          {visibleTasks.map((task) => <article key={task.id} className={`mobile-task priority-${task.priority}`}>
             <div className="split-heading"><small>{task.priority === "urgent" ? "EMERGENCY DISPATCH" : isScheduleTask(task) ? "NORMAL PATROL" : task.source}</small><StatusPill status={task.status} /></div>
             <h3>{task.title}</h3>
             <div className="task-chip-row">
@@ -143,7 +146,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
               <button className="button button-small button-outline" onClick={onOpenScanner}>Scan QR</button>
             </div>
           </article>)}
-          {filteredTasks.filter((task) => activeTab === "history" ? task.status === "completed" : task.status !== "completed").length === 0 && <div className="it-empty-state"><h3>No tasks in this tab</h3><p>Completed work moves into History after evidence is submitted.</p></div>}
+          {visibleTasks.length === 0 && <div className="it-empty-state"><h3>No tasks in this tab</h3><p>Completed work moves into History after evidence is submitted.</p></div>}
         </div>
       </Card>
       {completionTask && (

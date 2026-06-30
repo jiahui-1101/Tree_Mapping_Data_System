@@ -52,6 +52,8 @@
   .toolbar-actions { display: grid; grid-template-columns: 1fr 1fr; }
   .toolbar-actions select, .page-toolbar select { width: 100%; min-width: 0; }
   .toolbar-actions .button { grid-column: 1 / -1; }
+  .task-tabs button { flex: 1 1 calc(50% - 4px); }
+  .ranger-task-grid { grid-template-columns: 1fr; }
   .metric-grid { gap: 8px; }
   .it-audit-summary { grid-template-columns: 1fr; }
   .it-user-summary { grid-template-columns: 1fr 1fr; }
