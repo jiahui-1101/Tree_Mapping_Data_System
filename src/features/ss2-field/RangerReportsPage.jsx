@@ -49,7 +49,7 @@ export default function RangerReportsPage({ user, fieldReports }) {
                 <span><b>{report.id}</b><StatusPill status={report.syncStatus} /></span>
                 <h3>{report.treeName}</h3>
                 <p>{report.treeId} · {report.timestamp}</p>
-                <div className="report-chip-row"><StatusPill status={report.reportMode} /><StatusPill status={report.observedStatus} /></div>
+                <div className="report-chip-row"><StatusPill status={report.reportMode} /><StatusPill status={report.observedStatus} /><StatusPill status={report.reviewStatus || "Pending Review"} /></div>
                 <small>{report.analysis.summary}</small>
               </button>
             ))}
@@ -62,6 +62,8 @@ export default function RangerReportsPage({ user, fieldReports }) {
             <article><span>Mode</span><strong>{selected.reportMode === "ai" ? "AI diagnosis" : "Manual assessment"}</strong></article>
             <article><span>Observed status</span><strong>{selected.observedStatus}</strong></article>
             <article><span>Sync</span><strong>{selected.syncStatus}</strong></article>
+            <article><span>Review</span><strong>{selected.reviewStatus || "Pending Review"}</strong></article>
+            <article><span>Height</span><strong>{selected.heightMeasurement ? `${selected.heightMeasurement}m` : "Not recorded"}</strong></article>
             <article><span>GPS / time</span><strong>{selected.gpsLabel} · {selected.timestamp}</strong></article>
           </div>
           {selected.reportMode === "ai" ? (
@@ -98,4 +100,3 @@ export default function RangerReportsPage({ user, fieldReports }) {
     </>
   );
 }
-

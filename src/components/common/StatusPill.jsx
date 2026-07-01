@@ -6,6 +6,11 @@ const LABELS = {
   "in-progress": "In progress",
   completed: "Completed",
   escalated: "Escalated",
+  skipped: "Skipped",
+  "false-positive": "False positive",
+  "anomaly-found": "Anomaly found",
+  "Pending Review": "Pending Review",
+  Reassigned: "Reassigned",
   approved: "Approved",
   deferred: "Deferred",
   rejected: "Rejected",
@@ -34,4 +39,3 @@ const LABELS = {
 export default function StatusPill({ status }) {
   return <span className={`status-pill status-${status}`}>{LABELS[status] || status}</span>;
 }
-

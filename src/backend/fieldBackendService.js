@@ -3,7 +3,7 @@ import { TREES } from "../data/trees.js";
 import { analyzeFieldPhoto, createFieldReport, filterFieldReports, filterRangerTasks } from "../services/rangerService.js";
 import { getBackendConfig } from "./backendConfig.js";
 
-const TASK_STATUSES = new Set(["pending", "in-progress", "completed", "escalated"]);
+const TASK_STATUSES = new Set(["pending", "in-progress", "completed", "escalated", "skipped", "false-positive", "anomaly-found"]);
 const TASK_PRIORITIES = new Set(["normal", "high", "urgent"]);
 const RANGER_STATUSES = new Set(["active", "inactive"]);
 const ZONES = ["Arboretum", "Pemuliharaan", "Tanaman", "Riparian", "Tapak Semaian"];
@@ -172,9 +172,11 @@ function rowToReport(row) {
     confidence: row.confidence,
     treatment: row.treatment || "",
     notes: row.notes || "",
+    heightMeasurement: row.height_measurement,
     gpsLabel: row.gps_label || "",
     timestamp: row.timestamp_label || "",
     syncStatus: row.sync_status,
+    reviewStatus: row.review_status || "Pending Review",
     analysis: parseJson(row.analysis, {}),
   };
 }
@@ -379,19 +381,23 @@ function createMemoryFieldBackend() {
       return ok({ task: created.task, tasks });
     },
     async updateTaskStatus(id, status) {
-      if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, or escalated.");
+      if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, escalated, skipped, false-positive, or anomaly-found.");
       const task = await this.findTask(id);
       if (!task) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
       if (status === "completed" && !reports.some((report) => report.taskId === task.id)) {
         return fail(400, "EVIDENCE_REQUIRED", "Submit a linked field report before completing this task.");
       }
       const now = new Date().toISOString();
+      const doneStatuses = new Set(["completed", "skipped", "false-positive", "anomaly-found"]);
       tasks = tasks.map((item) => taskMatches(item, id) ? {
         ...item,
         status,
         startedAt: status === "in-progress" && !item.startedAt ? now : item.startedAt,
-        completedAt: status === "completed" ? now : item.completedAt,
+        completedAt: doneStatuses.has(status) ? now : item.completedAt,
       } : item);
+      if (status === "completed") {
+        reports = reports.map((report) => report.taskId === task.id ? { ...report, reviewStatus: "Approved" } : report);
+      }
       return ok({ task: await this.findTask(id), tasks });
     },
     async reassignTask(id, { newRanger = "", reassignedBy = "Admin" } = {}) {
@@ -411,6 +417,7 @@ function createMemoryFieldBackend() {
         dispatchedAt: now,
         notes: `${item.notes || ""} | Reassigned by ${reassignedBy} to ${targetName}.`.trim(),
       } : item);
+      reports = reports.map((report) => report.taskId === task.id ? { ...report, reviewStatus: "Reassigned" } : report);
       notifications = [{
         id: notifications.length + 1,
         rangerId: ranger?.id || targetName,
@@ -438,7 +445,8 @@ function createMemoryFieldBackend() {
       const report = createFieldReport({ draft: { ...draft, treeId: tree.id }, tree, rangerName, tasks, existingReports: reports });
       reports = [report, ...reports];
       const completedAt = new Date().toISOString();
-      if (report.taskId) tasks = tasks.map((task) => task.id === report.taskId ? { ...task, status: "completed", completedAt } : task);
+      const finalTaskStatus = draft.taskStatus && TASK_STATUSES.has(draft.taskStatus) ? draft.taskStatus : "completed";
+      if (report.taskId) tasks = tasks.map((task) => task.id === report.taskId ? { ...task, status: finalTaskStatus, completedAt } : task);
       const updatedTree = syncTreeRecordFromReport(tree, report.observedStatus);
       return ok({ report, task: report.taskId ? tasks.find((task) => task.id === report.taskId) : null, tasks, reports, tree: updatedTree });
     },
@@ -492,8 +500,8 @@ function createMysqlFieldBackend(config) {
     `INSERT INTO ss2_field_reports
       (id, task_id, tree_id, tree_name, ranger, report_mode, photo_name, photo_sync_status, photo_analysis_status,
        observed_status, manual_cause, manual_treatment, ai_possibilities, selected_ai_possibility_id,
-       ai_diagnosis_ref, diagnosis, confidence, treatment, notes, gps_label, timestamp_label, sync_status, analysis)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+       ai_diagnosis_ref, diagnosis, confidence, treatment, notes, height_measurement, gps_label, timestamp_label, sync_status, review_status, analysis)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       report.id,
       report.taskId || null,
@@ -514,9 +522,11 @@ function createMysqlFieldBackend(config) {
       report.confidence,
       report.treatment || null,
       report.notes || null,
+      report.heightMeasurement || null,
       report.gpsLabel || null,
       report.timestamp || null,
       report.syncStatus,
+      report.reviewStatus || "Pending Review",
       JSON.stringify(report.analysis || {}),
     ]
   );
@@ -730,7 +740,7 @@ function createMysqlFieldBackend(config) {
       return ok({ task: created.task, tasks: await this.listTasks() });
     },
     async updateTaskStatus(id, status) {
-      if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, or escalated.");
+      if (!TASK_STATUSES.has(status)) return fail(400, "INVALID_STATUS", "Task status must be pending, in-progress, completed, escalated, skipped, false-positive, or anomaly-found.");
       if (status === "completed") {
         const [reportRows] = await pool.execute("SELECT id FROM ss2_field_reports WHERE task_id = ? LIMIT 1", [id]);
         if (!reportRows[0]) return fail(400, "EVIDENCE_REQUIRED", "Submit a linked field report before completing this task.");
@@ -739,11 +749,14 @@ function createMysqlFieldBackend(config) {
         `UPDATE ss2_field_tasks
          SET status = ?,
              started_at = CASE WHEN ? = 'in-progress' AND started_at IS NULL THEN CURRENT_TIMESTAMP ELSE started_at END,
-             completed_at = CASE WHEN ? = 'completed' THEN CURRENT_TIMESTAMP ELSE completed_at END
+             completed_at = CASE WHEN ? IN ('completed', 'skipped', 'false-positive', 'anomaly-found') THEN CURRENT_TIMESTAMP ELSE completed_at END
          WHERE id = ?`,
         [status, status, status, id]
       );
       if (!result.affectedRows) return fail(404, "TASK_NOT_FOUND", "Field task not found.");
+      if (status === "completed") {
+        await pool.execute("UPDATE ss2_field_reports SET review_status = 'Approved' WHERE task_id = ?", [id]);
+      }
       return ok({ task: await this.findTask(id), tasks: await this.listTasks() });
     },
     async reassignTask(id, { newRanger = "", reassignedBy = "Admin" } = {}) {
@@ -764,6 +777,7 @@ function createMysqlFieldBackend(config) {
            WHERE id = ?`,
           [targetName, reassignmentNote, id]
         );
+        await connection.execute("UPDATE ss2_field_reports SET review_status = 'Reassigned' WHERE task_id = ?", [id]);
         await connection.execute(
           `INSERT INTO ss2_push_notifications (ranger_id, ranger_name, task_id, payload_summary, delivery_status)
            VALUES (?, ?, ?, ?, 'Sent')`,
@@ -804,7 +818,8 @@ function createMysqlFieldBackend(config) {
           existingReports: reportRows.map(rowToReport),
         });
         await insertReport(connection, report);
-        if (report.taskId) await connection.execute("UPDATE ss2_field_tasks SET status = 'completed', completed_at = CURRENT_TIMESTAMP WHERE id = ?", [report.taskId]);
+        const finalTaskStatus = draft.taskStatus && TASK_STATUSES.has(draft.taskStatus) ? draft.taskStatus : "completed";
+        if (report.taskId) await connection.execute("UPDATE ss2_field_tasks SET status = ?, completed_at = CURRENT_TIMESTAMP WHERE id = ?", [finalTaskStatus, report.taskId]);
         const updatedTree = syncTreeRecordFromReport(tree, report.observedStatus);
         try {
           await connection.execute(

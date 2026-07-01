@@ -79,7 +79,7 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], rangers: ran
           <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search task, tree, ranger, source or notes..." />
           <div className="toolbar-actions">
             <select value={ranger} onChange={(event) => setRanger(event.target.value)}><option value="all">All rangers</option>{taskRangers.map((item) => <option key={item}>{item}</option>)}</select>
-            <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All status</option><option value="pending">Pending</option><option value="in-progress">In progress</option><option value="completed">Completed</option><option value="escalated">Escalated</option></select>
+            <select value={status} onChange={(event) => setStatus(event.target.value)}><option value="all">All status</option><option value="pending">Pending</option><option value="in-progress">In progress</option><option value="completed">Completed</option><option value="skipped">Skipped</option><option value="false-positive">False positive</option><option value="anomaly-found">Anomaly found</option><option value="escalated">Escalated</option></select>
             <select value={priority} onChange={(event) => setPriority(event.target.value)}><option value="all">All priority</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option></select>
             <select value={source} onChange={(event) => setSource(event.target.value)}><option value="all">All source</option>{sources.map((item) => <option key={item}>{item}</option>)}</select>
             <select value={sortBy} onChange={(event) => setSortBy(event.target.value)}><option value="priority">Sort priority</option><option value="recent">Sort recent activity</option><option value="ranger">Sort ranger</option><option value="status">Sort status</option></select>
@@ -98,7 +98,7 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], rangers: ran
                   <span><b>Duration</b>{durationLabel(task)}</span>
                 </div>
                 <p>{task.treeId} · {task.source}</p>
-                <small>{report ? `Evidence linked: ${report.id}` : task.status === "completed" ? "Completed without linked report" : "Waiting for ranger evidence"}</small>
+                <small>{report ? `Evidence linked: ${report.id} · ${report.reviewStatus || "Pending Review"}` : task.status === "completed" ? "Completed without linked report" : "Waiting for ranger evidence"}</small>
               </button>
             );
           })}
@@ -124,6 +124,8 @@ export default function TaskTrackerPage({ tasks, fieldReports = [], rangers: ran
               <span className="premium-eyebrow">Linked ranger evidence</span>
               <h3>{latestReport.reportMode === "ai" ? "AI-assisted field diagnosis" : "Manual ranger assessment"}</h3>
               <p><strong>{latestReport.id}</strong> · {latestReport.treeId} · {latestReport.timestamp}</p>
+              <p><strong>Review status:</strong> {latestReport.reviewStatus || "Pending Review"}</p>
+              {latestReport.heightMeasurement && <p><strong>Height measurement:</strong> {latestReport.heightMeasurement}m</p>}
               {latestReport.reportMode === "ai" && <p><strong>Photo attachment:</strong> {latestReport.photoName} · {latestReport.photoSyncStatus}</p>}
               <p>{latestReport.analysis.summary}</p>
               <p><strong>Recommendation:</strong> {latestReport.analysis.recommendation}</p>

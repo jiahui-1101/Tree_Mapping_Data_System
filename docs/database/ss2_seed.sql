@@ -26,7 +26,7 @@ ON DUPLICATE KEY UPDATE
 INSERT INTO ss2_field_reports
   (id, task_id, tree_id, tree_name, ranger, report_mode, photo_name, photo_sync_status, photo_analysis_status,
    observed_status, manual_cause, manual_treatment, ai_possibilities, selected_ai_possibility_id,
-   ai_diagnosis_ref, diagnosis, confidence, treatment, notes, gps_label, timestamp_label, sync_status, analysis)
+   ai_diagnosis_ref, diagnosis, confidence, treatment, notes, height_measurement, gps_label, timestamp_label, sync_status, review_status, analysis)
 VALUES
   (
     'FR-1021',
@@ -47,9 +47,11 @@ VALUES
     NULL,
     NULL,
     'Leaf drop is visible on the lower canopy but no fungus spotted.',
+    12.40,
     'Mock GPS: Arboretum patrol point',
     'Today 08:42',
     'synced',
+    'Pending Review',
     JSON_OBJECT(
       'source', 'manual',
       'severity', 'Monitor',
@@ -107,9 +109,11 @@ VALUES
     89,
     'Remove infected leaves and apply a copper-based spray.',
     'Dark spotting on multiple leaves. AI support requested for treatment confirmation.',
+    8.70,
     'Mock GPS: Tanaman fruit plot',
     'Yesterday 16:10',
     'synced',
+    'Pending Review',
     JSON_OBJECT(
       'source', 'ai',
       'severity', 'Critical',
@@ -141,7 +145,9 @@ ON DUPLICATE KEY UPDATE
   confidence = VALUES(confidence),
   treatment = VALUES(treatment),
   notes = VALUES(notes),
+  height_measurement = VALUES(height_measurement),
   gps_label = VALUES(gps_label),
   timestamp_label = VALUES(timestamp_label),
   sync_status = VALUES(sync_status),
+  review_status = VALUES(review_status),
   analysis = VALUES(analysis);

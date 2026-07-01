@@ -18,6 +18,7 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
   const [observedStatus, setObservedStatus] = useState("monitor");
   const [manualCause, setManualCause] = useState("");
   const [manualTreatment, setManualTreatment] = useState("");
+  const [heightMeasurement, setHeightMeasurement] = useState("");
   const [aiResult, setAiResult] = useState(null);
   const [selectedAiPossibilityId, setSelectedAiPossibilityId] = useState("");
   const [aiState, setAiState] = useState("idle");
@@ -143,6 +144,7 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
       observedStatus,
       manualCause,
       manualTreatment,
+      heightMeasurement,
       aiPossibilities: reportMode === "ai" ? aiPossibilities : [],
       selectedAiPossibilityId: reportMode === "ai" ? selectedAiPossibility.id : "",
       aiDiagnosisRef: aiResult?.aiDiagnosisRef || "",
@@ -223,6 +225,8 @@ export default function QRScanner({ role, trees, qrCodes = [], language, onClose
                     <span><b>Time</b><small>Just now</small></span>
                     <span><b>GPS</b><small>Mock GPS: {visibleTree.zone} patrol point</small></span>
                   </div>
+                  <label className="field-label">Height measurement (m)</label>
+                  <input type="number" min="0" step="0.1" value={heightMeasurement} onChange={(event) => setHeightMeasurement(event.target.value)} placeholder={`Current record: ${visibleTree.height || "-"}m`} />
                   {reportMode === "manual" ? (
                     <>
                       <label className="field-label">Issue cause</label>

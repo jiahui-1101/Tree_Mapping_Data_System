@@ -27,6 +27,8 @@ function elapsedLabel(startedAt, nowMs) {
   return hours ? `${hours}h ${rest}m` : `${Math.max(1, rest)}m`;
 }
 
+const DONE_STATUSES = new Set(["completed", "skipped", "false-positive", "anomaly-found"]);
+
 export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask, onSubmitTaskEvidence, onOpenScanner, showToast }) {
   const [query, setQuery] = useState("");
   const [status, setStatus] = useState("all");
@@ -39,6 +41,8 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const [observedStatus, setObservedStatus] = useState("healthy");
   const [manualCause, setManualCause] = useState("");
   const [manualTreatment, setManualTreatment] = useState("");
+  const [heightMeasurement, setHeightMeasurement] = useState("");
+  const [taskOutcome, setTaskOutcome] = useState("completed");
   const [evidenceNotes, setEvidenceNotes] = useState("");
   const [notifications, setNotifications] = useState([]);
   const rangerName = user?.name || "";
@@ -47,16 +51,16 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const visibleTasks = useMemo(() => baseFilteredTasks.filter((task) => {
     if (activeTab === "schedule") return isScheduleTask(task);
     if (activeTab === "special") return !isScheduleTask(task);
-    if (activeTab === "history") return task.status === "completed";
+    if (activeTab === "history") return DONE_STATUSES.has(task.status);
     return true;
   }), [activeTab, baseFilteredTasks]);
-  const completed = rangerTasks.filter((task) => task.status === "completed").length;
+  const completed = rangerTasks.filter((task) => DONE_STATUSES.has(task.status)).length;
   const active = rangerTasks.filter((task) => task.status === "pending" || task.status === "in-progress").length;
   const urgentHigh = rangerTasks.filter((task) => task.priority === "urgent" || task.priority === "high").length;
   const viewAllCount = baseFilteredTasks.length;
   const scheduleCount = baseFilteredTasks.filter(isScheduleTask).length;
   const specialCount = baseFilteredTasks.filter((task) => !isScheduleTask(task)).length;
-  const historyCount = baseFilteredTasks.filter((task) => task.status === "completed").length;
+  const historyCount = baseFilteredTasks.filter((task) => DONE_STATUSES.has(task.status)).length;
   const activePatrol = rangerTasks.find((task) => task.status === "in-progress");
   const sources = [...new Set(rangerTasks.map((task) => task.source))];
 
@@ -90,6 +94,8 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
       setObservedStatus("healthy");
       setManualCause("");
       setManualTreatment("");
+      setHeightMeasurement("");
+      setTaskOutcome("completed");
       setEvidenceNotes("");
     }
   };
@@ -107,6 +113,8 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
       observedStatus,
       manualCause,
       manualTreatment,
+      heightMeasurement,
+      taskStatus: taskOutcome,
       notes: evidenceNotes || `Completed ${completionTask.title}.`,
       timestamp: new Date().toLocaleString(),
     });
@@ -142,7 +150,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
           <input className="search-input" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search task ID, title, tree ID, source or notes..." />
           <div className="toolbar-actions">
             <select value={status} onChange={(event) => setStatus(event.target.value)}>
-              <option value="all">All status</option><option value="pending">Pending</option><option value="in-progress">In progress</option><option value="completed">Completed</option><option value="escalated">Escalated</option>
+              <option value="all">All status</option><option value="pending">Pending</option><option value="in-progress">In progress</option><option value="completed">Completed</option><option value="skipped">Skipped</option><option value="false-positive">False positive</option><option value="anomaly-found">Anomaly found</option><option value="escalated">Escalated</option>
             </select>
             <select value={priority} onChange={(event) => setPriority(event.target.value)}>
               <option value="all">All priority</option><option value="urgent">Urgent</option><option value="high">High</option><option value="normal">Normal</option>
@@ -159,7 +167,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
             <div className="task-chip-row">
               <span><b>{isScheduleTask(task) ? "Zone" : "Tree/Area"}</b>{taskZone(task)}</span>
               <span><b>Priority</b>{task.priority}</span>
-              <span><b>Duration</b>{task.status === "completed" ? "Completed" : elapsedLabel(task.startedAt, nowMs)}</span>
+              <span><b>Duration</b>{DONE_STATUSES.has(task.status) ? "Closed" : elapsedLabel(task.startedAt, nowMs)}</span>
             </div>
             <p>{compactNotes(task.notes)}</p>
             {task.status === "in-progress" && (
@@ -169,7 +177,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
               </div>
             )}
             <div className="button-row">
-              <button className="button button-small" disabled={task.status === "completed"} onClick={() => advanceTask(task)}>{task.status === "pending" ? "Accept & Start Tracking" : task.status === "completed" ? "Completed" : "Complete Patrol"}</button>
+              <button className="button button-small" disabled={DONE_STATUSES.has(task.status)} onClick={() => advanceTask(task)}>{task.status === "pending" ? "Accept & Start Tracking" : DONE_STATUSES.has(task.status) ? "Closed" : "Complete Patrol"}</button>
               <button className="button button-small button-outline" onClick={onOpenScanner}>Scan QR</button>
             </div>
           </article>)}
@@ -189,6 +197,15 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
             <option value="monitor">Monitor</option>
             <option value="critical">Critical</option>
           </select>
+          <label className="field-label">Final task outcome</label>
+          <select value={taskOutcome} onChange={(event) => setTaskOutcome(event.target.value)}>
+            <option value="completed">Completed</option>
+            <option value="skipped">Skipped</option>
+            <option value="false-positive">False positive</option>
+            <option value="anomaly-found">Anomaly found</option>
+          </select>
+          <label className="field-label">Height measurement (m)</label>
+          <input type="number" min="0" step="0.1" value={heightMeasurement} onChange={(event) => setHeightMeasurement(event.target.value)} placeholder="e.g. 8.5" />
           <label className="field-label">Evidence / cause found</label>
           <input value={manualCause} onChange={(event) => setManualCause(event.target.value)} placeholder="e.g. No pest signs found during zone patrol" />
           <label className="field-label">Action taken</label>
