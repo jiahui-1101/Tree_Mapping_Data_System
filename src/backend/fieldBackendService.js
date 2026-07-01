@@ -41,6 +41,10 @@ function treeById(id) {
   return TREES.find((tree) => tree.id.toLowerCase() === String(id || "").toLowerCase()) || null;
 }
 
+function representativeTreeIdForZone(zone) {
+  return TREES.find((tree) => tree.zone === zone)?.id || TREES[0]?.id || "TBJ-001";
+}
+
 function healthScoreForStatus(status) {
   if (status === "critical") return 38;
   if (status === "monitor") return 68;
@@ -218,6 +222,11 @@ function buildAiSchedule({ rangers = [], previousAssignments = [], weekStart = g
         .sort((a, b) => a.score - b.score);
       const chosen = rankedZones[0].zone;
       zoneLoad.set(chosen, (zoneLoad.get(chosen) || 0) + 1);
+      const reasoningNote = lastZone
+        ? lastZone === chosen
+          ? `${ranger.name} remains in ${chosen} because this zone still needs coverage balance.`
+          : `${ranger.name} was rotated from ${lastZone} to ${chosen} to avoid repeated patrols and spread workload evenly.`
+        : `${ranger.name} was assigned to ${chosen} based on default zone coverage because no previous patrol history was available.`;
       assignments.push({
         rangerId: ranger.id,
         rangerName: ranger.name,
@@ -227,9 +236,7 @@ function buildAiSchedule({ rangers = [], previousAssignments = [], weekStart = g
         shiftStart: "08:00:00",
         shiftEnd: "12:00:00",
         priorityFlag: zoneLoad.get(chosen) > 3 ? "High" : "Normal",
-        aiReasoningNote: lastZone === chosen
-          ? `${ranger.name} remains in ${chosen} because this zone still needs coverage balance.`
-          : `${ranger.name} was rotated from ${lastZone || ranger.zone || "no previous patrol"} to ${chosen} to avoid repeated patrols and spread workload evenly.`,
+        aiReasoningNote: reasoningNote,
       });
     }
   }
@@ -328,7 +335,7 @@ function createMemoryFieldBackend() {
         const draft = createTaskDraft({
           scheduleAssignmentId: assignment.id,
           title: `Patrol ${assignment.zone}`,
-          treeId: assignment.zone,
+          treeId: representativeTreeIdForZone(assignment.zone),
           ranger: assignment.rangerName,
           taskType: "Patrol",
           source: "Schedule",
@@ -670,7 +677,7 @@ function createMysqlFieldBackend(config) {
           const created = createTaskDraft({
             scheduleAssignmentId: assignment.id,
             title: `Patrol ${assignment.zone}`,
-            treeId: assignment.zone,
+            treeId: representativeTreeIdForZone(assignment.zone),
             ranger: assignment.rangerName,
             taskType: "Patrol",
             source: "Schedule",

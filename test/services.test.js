@@ -17,6 +17,7 @@ import { visitorText, visitorTreeDescription } from "../src/services/visitorI18n
 import { MAP_ZONES, TBJ_COLLECTION_SUMMARIES, TBJ_MAP_FACTS, TBJ_STAKEHOLDER_PLOTS, countStakeholderRecords, countZoneRecords, formatPlotQuantity, getMapSourceSummary, getStakeholderPlotInventory, getStakeholderPlotsByZone, getStakeholderSourceGroup, getVisitorZone, percentToWorldPosition, worldToPercentPosition } from "../src/data/gardenMap.js";
 import { getPublicTreeCard, projectGrowth } from "../src/data/visitorTreeProfiles.js";
 import { createApp } from "../src/backend/server.js";
+import { createFieldBackend } from "../src/backend/fieldBackendService.js";
 import { createVisitorBackend, addTreeToVisitorCollection, answerVisitorChat, getSs4QrScanEvents, getVisitorAnalytics, getVisitorCollection, getVisitorTreeIdCard, recommendVisitorRoute, recordVisitorScan, resetVisitorBackendState } from "../src/backend/visitorBackendService.js";
 import { createVisitorStore } from "../src/backend/visitorStore.js";
 import { createSs4Backend, createSs4Store } from "../src/backend/ss4BackendService.js";
@@ -28,6 +29,10 @@ function createStorage() {
     getItem: (key) => values.get(key) ?? null,
     setItem: (key, value) => values.set(key, value),
   };
+}
+
+function createTestFieldBackend() {
+  return createFieldBackend({ config: { fieldStore: "memory" } });
 }
 
 test("RBAC exposes the correct role navigation", () => {
@@ -199,6 +204,146 @@ test("ranger report helpers link matching tree tasks and build analysis", () => 
   assert.equal(analysis.severity, "Healthy");
   assert.ok(analysis.taskSyncMessage.includes("TSK-087"));
   assert.ok(analysis.photoSyncMessage.includes("No field photo"));
+});
+
+test("SS2 backend dispatches zone patrols with real tree IDs and report lifecycle review", async () => {
+  const backend = createTestFieldBackend();
+  await backend.upsertRanger({ id: "R01", name: "Ahmad Razif", zone: "Arboretum", phone: "+60 12-334 8201" });
+  await backend.upsertRanger({ id: "R02", name: "Siti Nurul", zone: "Pemuliharaan", phone: "+60 16-220 9143" });
+
+  const generated = await backend.generateSchedule({ createdBy: "Admin", weekLabel: "SS2 test week" });
+  assert.equal(generated.ok, true);
+  assert.ok(generated.schedule.assignments.length > 0);
+  assert.ok(generated.schedule.assignments.every((assignment) => assignment.aiReasoningNote.includes("no previous patrol history")));
+  assert.ok(!generated.schedule.assignments[0].aiReasoningNote.includes("rotated from Arboretum to Arboretum"));
+
+  const published = await backend.publishSchedule(generated.schedule.id, { approvedBy: "Admin" });
+  assert.equal(published.ok, true);
+  const patrolTasks = published.createdTasks.filter((task) => task.taskType === "Patrol");
+  assert.ok(patrolTasks.length > 0);
+  for (const task of patrolTasks) {
+    assert.match(task.treeId, /^TBJ-\d{3}$/);
+    const tree = TREES.find((item) => item.id === task.treeId);
+    const zone = task.title.replace(/^Patrol\s+/i, "");
+    assert.equal(tree.zone, zone);
+  }
+
+  const task = patrolTasks[0];
+  await backend.updateTaskStatus(task.id, "in-progress");
+  const reportResult = await backend.createReport({
+    treeId: task.treeId,
+    rangerName: task.ranger,
+    draft: {
+      taskId: task.id,
+      reportMode: "manual",
+      observedStatus: "monitor",
+      manualCause: "Unexpected canopy discoloration during patrol.",
+      manualTreatment: "Flagged for closer admin review.",
+      heightMeasurement: 11.5,
+      taskStatus: "anomaly-found",
+    },
+  });
+  assert.equal(reportResult.ok, true);
+  assert.equal(reportResult.report.heightMeasurement, 11.5);
+  assert.equal(reportResult.report.reviewStatus, "Pending Review");
+  assert.equal(reportResult.task.status, "anomaly-found");
+
+  const approved = await backend.updateTaskStatus(task.id, "completed");
+  assert.equal(approved.ok, true);
+  assert.equal((await backend.listReports()).find((report) => report.id === reportResult.report.id).reviewStatus, "Approved");
+
+  const reassigned = await backend.reassignTask(task.id, { newRanger: "Siti Nurul", reassignedBy: "Admin" });
+  assert.equal(reassigned.ok, true);
+  assert.equal(reassigned.task.status, "pending");
+  assert.equal(reassigned.task.ranger, "Siti Nurul");
+  assert.equal((await backend.listReports()).find((report) => report.id === reportResult.report.id).reviewStatus, "Reassigned");
+});
+
+test("SS2 Express API exposes ranger, schedule, task, report and notification endpoints", async () => {
+  const backend = createVisitorBackend({ store: createVisitorStore({ persist: false }) });
+  const fieldBackend = createTestFieldBackend();
+  const ss4Backend = createSs4Backend({ store: createSs4Store({ persist: false }) });
+  const itSupportBackend = createItSupportBackend({ store: createItSupportStore({ persist: false }) });
+  const server = createApp({ backend, fieldBackend, ss4Backend, itSupportBackend }).listen(0);
+  const baseUrl = `http://127.0.0.1:${server.address().port}`;
+  try {
+    const ranger = await fetch(`${baseUrl}/api/ss2/rangers`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id: "R01", name: "Ahmad Razif", zone: "Arboretum", phone: "+60 12-334 8201" }),
+    }).then((response) => response.json());
+    assert.equal(ranger.ok, true);
+
+    const generated = await fetch(`${baseUrl}/api/ss2/schedules/generate`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ createdBy: "Admin", weekLabel: "SS2 API test week" }),
+    }).then((response) => response.json());
+    assert.equal(generated.ok, true);
+
+    const published = await fetch(`${baseUrl}/api/ss2/schedules/${generated.schedule.id}/publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ approvedBy: "Admin" }),
+    }).then((response) => response.json());
+    assert.equal(published.ok, true);
+
+    const tasks = await fetch(`${baseUrl}/api/ss2/tasks?ranger=Ahmad%20Razif`).then((response) => response.json());
+    assert.equal(tasks.ok, true);
+    assert.ok(tasks.data.length > 0);
+    assert.match(tasks.data[0].treeId, /^TBJ-\d{3}$/);
+
+    const started = await fetch(`${baseUrl}/api/ss2/tasks/${tasks.data[0].id}/status`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "in-progress" }),
+    }).then((response) => response.json());
+    assert.equal(started.ok, true);
+
+    const report = await fetch(`${baseUrl}/api/ss2/reports`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        treeId: tasks.data[0].treeId,
+        rangerName: "Ahmad Razif",
+        draft: {
+          taskId: tasks.data[0].id,
+          reportMode: "manual",
+          observedStatus: "healthy",
+          manualCause: "Routine patrol completed.",
+          manualTreatment: "No treatment required.",
+          heightMeasurement: 18.2,
+        },
+      }),
+    }).then((response) => response.json());
+    assert.equal(report.ok, true);
+    assert.equal(report.report.reviewStatus, "Pending Review");
+    assert.equal(report.report.heightMeasurement, 18.2);
+
+    const notifications = await fetch(`${baseUrl}/api/ss2/notifications?ranger=Ahmad%20Razif`).then((response) => response.json());
+    assert.equal(notifications.ok, true);
+    assert.ok(notifications.data.some((item) => item.taskId === tasks.data[0].id));
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
+test("SS2 database schema documents scheduling, lifecycle and review fields", () => {
+  const schema = readFileSync(new URL("../docs/database/ss2_schema.sql", import.meta.url), "utf8");
+  const migration = readFileSync(new URL("../docs/database/ss2_report_lifecycle_migration.sql", import.meta.url), "utf8");
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_rangers/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_schedule_weeks/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_schedule_assignments/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_field_tasks/);
+  assert.match(schema, /'skipped'/);
+  assert.match(schema, /'false-positive'/);
+  assert.match(schema, /'anomaly-found'/);
+  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_field_reports/);
+  assert.match(schema, /height_measurement DECIMAL\(5,2\)/);
+  assert.match(schema, /review_status ENUM\('Pending Review', 'Approved', 'Reassigned'\)/);
+  assert.match(migration, /MODIFY status ENUM/);
+  assert.match(migration, /ADD COLUMN height_measurement/);
+  assert.match(migration, /ADD COLUMN review_status/);
 });
 
 test("visitor language choice persists", () => {
@@ -689,4 +834,3 @@ test("IT Support database schema documents operations tables", () => {
   assert.match(schema, /CREATE TABLE IF NOT EXISTS it_service_logs/);
   assert.match(schema, /CREATE TABLE IF NOT EXISTS it_audit_events/);
 });
-
