@@ -10,8 +10,9 @@ function isScheduleTask(task) {
 }
 
 function taskZone(task) {
-  const zoneMatch = String(task.notes || "").match(/(?:Patrol|Zone:)\s*([A-Za-z ]+)/i);
-  return isScheduleTask(task) ? task.treeId : zoneMatch?.[1]?.trim() || task.treeId;
+  const titleMatch = String(task.title || "").match(/^Patrol\s+(.+)$/i);
+  const noteMatch = String(task.notes || "").match(/Zone:\s*([A-Za-z ]+)/i);
+  return titleMatch?.[1]?.trim() || noteMatch?.[1]?.trim() || task.treeId;
 }
 
 function compactNotes(notes = "") {
@@ -63,6 +64,12 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
   const historyCount = baseFilteredTasks.filter((task) => DONE_STATUSES.has(task.status)).length;
   const activePatrol = rangerTasks.find((task) => task.status === "in-progress");
   const sources = [...new Set(rangerTasks.map((task) => task.source))];
+  const evidenceTreeOptions = useMemo(() => {
+    if (!completionTask) return trees;
+    const zone = taskZone(completionTask);
+    const zoneTrees = trees.filter((tree) => tree.zone === zone);
+    return zoneTrees.length ? zoneTrees : trees;
+  }, [completionTask, trees]);
 
   useEffect(() => {
     const intervalId = window.setInterval(() => setNowMs(Date.now()), 30000);
@@ -90,7 +97,9 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
     }
     if (task.status === "in-progress") {
       setCompletionTask(task);
-      setEvidenceTreeId(trees.find((tree) => tree.id === task.treeId)?.id || trees[0]?.id || "");
+      const zone = taskZone(task);
+      const zoneTrees = trees.filter((tree) => tree.zone === zone);
+      setEvidenceTreeId(trees.find((tree) => tree.id === task.treeId)?.id || zoneTrees[0]?.id || trees[0]?.id || "");
       setObservedStatus("healthy");
       setManualCause("");
       setManualTreatment("");
@@ -189,7 +198,7 @@ export default function RangerTasksPage({ user, trees = [], tasks, onUpdateTask,
           <p className="muted">Submit a field report before this task can be marked completed.</p>
           <label className="field-label">Observed tree</label>
           <select value={evidenceTreeId} onChange={(event) => setEvidenceTreeId(event.target.value)}>
-            {trees.map((tree) => <option key={tree.id} value={tree.id}>{tree.id} - {tree.name}</option>)}
+            {evidenceTreeOptions.map((tree) => <option key={tree.id} value={tree.id}>{tree.id} - {tree.name} ({tree.zone})</option>)}
           </select>
           <label className="field-label">Observed status</label>
           <select value={observedStatus} onChange={(event) => setObservedStatus(event.target.value)}>
