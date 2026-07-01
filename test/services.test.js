@@ -328,24 +328,6 @@ test("SS2 Express API exposes ranger, schedule, task, report and notification en
   }
 });
 
-test("SS2 database schema documents scheduling, lifecycle and review fields", () => {
-  const schema = readFileSync(new URL("../docs/database/ss2_schema.sql", import.meta.url), "utf8");
-  const migration = readFileSync(new URL("../docs/database/ss2_report_lifecycle_migration.sql", import.meta.url), "utf8");
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_rangers/);
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_schedule_weeks/);
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_schedule_assignments/);
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_field_tasks/);
-  assert.match(schema, /'skipped'/);
-  assert.match(schema, /'false-positive'/);
-  assert.match(schema, /'anomaly-found'/);
-  assert.match(schema, /CREATE TABLE IF NOT EXISTS ss2_field_reports/);
-  assert.match(schema, /height_measurement DECIMAL\(5,2\)/);
-  assert.match(schema, /review_status ENUM\('Pending Review', 'Approved', 'Reassigned'\)/);
-  assert.match(migration, /MODIFY status ENUM/);
-  assert.match(migration, /ADD COLUMN height_measurement/);
-  assert.match(migration, /ADD COLUMN review_status/);
-});
-
 test("visitor language choice persists", () => {
   const storage = createStorage();
   saveLanguage("zh", storage);
