@@ -21,7 +21,7 @@ export function filterFieldReports(reports = [], rangerName = "", { query = "", 
     if (syncStatus !== "all" && report.syncStatus !== syncStatus) return false;
     if (!needle) return true;
     const aiText = (report.aiPossibilities || []).map((item) => `${item.name} ${item.reasons?.join(" ")} ${item.solutions?.join(" ")}`).join(" ");
-    return `${report.id} ${report.taskId} ${report.treeId} ${report.treeName} ${report.ranger} ${report.reportMode} ${report.observedStatus} ${report.diagnosis} ${aiText} ${report.manualCause} ${report.manualTreatment} ${report.notes} ${report.syncStatus}`.toLowerCase().includes(needle);
+    return `${report.id} ${report.taskId} ${report.treeId} ${report.treeName} ${report.ranger} ${report.reportMode} ${report.observedStatus} ${report.diagnosis} ${aiText} ${report.manualCause} ${report.manualTreatment} ${report.notes} ${report.syncStatus} ${report.reviewStatus} ${report.heightMeasurement}`.toLowerCase().includes(needle);
   });
 }
 
@@ -66,7 +66,7 @@ export function analyzeFieldPhoto({ tree, photoName = "" } = {}) {
   };
 }
 
-export function buildReportAnalysis({ reportMode = "manual", manualCause = "", manualTreatment = "", diagnosis = "", confidence = null, treatment = "", observedStatus = "monitor", linkedTask = null, photoName = "", photoSyncStatus = "none", photoAnalysisStatus = "not-requested", aiPossibilities = [] } = {}) {
+export function buildReportAnalysis({ reportMode = "manual", manualCause = "", manualTreatment = "", diagnosis = "", confidence = null, treatment = "", observedStatus = "monitor", linkedTask = null, photoName = "", photoSyncStatus = "none", photoAnalysisStatus = "not-requested", aiPossibilities = [], heightMeasurement = "" } = {}) {
   const severity = observedStatus === "critical" ? "Critical" : observedStatus === "healthy" ? "Healthy" : "Monitor";
   const source = reportMode === "ai" ? "ai" : "manual";
   const photoText = photoName && photoName !== "No photo attached"
@@ -77,9 +77,10 @@ export function buildReportAnalysis({ reportMode = "manual", manualCause = "", m
   const possibilityText = source === "ai" && aiPossibilities.length
     ? ` ${aiPossibilities.length} possible diagnoses generated; primary result: ${diagnosis}.`
     : "";
+  const heightText = heightMeasurement ? ` Height recorded: ${heightMeasurement}m.` : "";
   const summary = source === "ai"
     ? `${photoText} AI-assisted diagnosis: ${diagnosis || "Pending diagnosis"}${confidence ? ` with ${confidence}% confidence` : ""}.${possibilityText}`
-    : `Manual ranger assessment: ${manualCause || "Ranger recorded field observations without AI support."}`;
+    : `Manual ranger assessment: ${manualCause || "Ranger recorded field observations without AI support."}${heightText}`;
   const recommendation = source === "ai"
     ? treatment || "Review AI result and confirm treatment with office staff."
     : manualTreatment || "Continue field observation and document follow-up action.";
@@ -88,7 +89,7 @@ export function buildReportAnalysis({ reportMode = "manual", manualCause = "", m
     severity,
     summary,
     recommendation,
-    taskSyncMessage: linkedTask ? `Linked task ${linkedTask.id} marked completed and synced to the office dashboard.` : "Standalone field report saved without a linked task.",
+    taskSyncMessage: linkedTask ? `Linked task ${linkedTask.id} submitted and flagged for admin review.` : "Standalone field report saved without a linked task.",
     treeUpdateMessage: `Tree status updated to ${observedStatus} in the prototype map.`,
     photoSyncMessage: photoSyncStatus === "uploaded" ? `Field photo ${photoName} uploaded to admin dashboard.` : "No field photo upload was attached.",
     photoAnalysisMessage: photoAnalysisStatus === "analyzed" ? `AI photo analysis completed for ${photoName}.` : "AI photo analysis was not requested.",
@@ -100,6 +101,7 @@ export function createFieldReport({ draft = {}, tree, rangerName = "", tasks = [
   const linkedTask = findLinkedTaskForTree(tasks, tree?.id || draft.treeId, rangerName, draft.taskId);
   const reportMode = draft.reportMode === "ai" ? "ai" : "manual";
   const observedStatus = draft.observedStatus || "monitor";
+  const heightMeasurement = draft.heightMeasurement || draft.height || "";
   const photoName = reportMode === "ai" ? draft.photoName || "No photo attached" : "";
   const photoSyncStatus = reportMode === "ai" && photoName !== "No photo attached" ? "uploaded" : "none";
   const photoAnalysisStatus = reportMode === "ai" ? draft.photoAnalysisStatus || "analyzed" : "not-requested";
@@ -109,7 +111,7 @@ export function createFieldReport({ draft = {}, tree, rangerName = "", tasks = [
   const diagnosis = reportMode === "ai" ? selectedAiPossibility?.name || draft.diagnosis || "" : "";
   const confidence = reportMode === "ai" ? selectedAiPossibility?.confidence ?? draft.confidence ?? null : null;
   const treatment = reportMode === "ai" ? selectedAiPossibility?.treatment || selectedAiPossibility?.solutions?.[0] || draft.treatment || "" : "";
-  const analysis = buildReportAnalysis({ ...draft, reportMode, observedStatus, linkedTask, photoName, photoSyncStatus, photoAnalysisStatus, aiPossibilities, selectedAiPossibilityId, diagnosis, confidence, treatment });
+  const analysis = buildReportAnalysis({ ...draft, reportMode, observedStatus, linkedTask, photoName, photoSyncStatus, photoAnalysisStatus, aiPossibilities, selectedAiPossibilityId, diagnosis, confidence, treatment, heightMeasurement });
   return {
     id: `FR-${String(1022 + existingReports.length).padStart(4, "0")}`,
     taskId: linkedTask?.id || "",
@@ -129,9 +131,11 @@ export function createFieldReport({ draft = {}, tree, rangerName = "", tasks = [
     confidence,
     treatment,
     notes: draft.notes || "",
+    heightMeasurement,
     gpsLabel: draft.gpsLabel || "Mock GPS: Ranger patrol point captured",
     timestamp: draft.timestamp || "Just now",
     syncStatus: "synced",
+    reviewStatus: draft.reviewStatus || "Pending Review",
     analysis,
   };
 }
